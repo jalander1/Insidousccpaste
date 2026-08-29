@@ -24,14 +24,26 @@ To build the double-clickable app:
 npm run dist
 ```
 
-That writes `release/The Rule-1.0.0-arm64.dmg`. Open it, drag **The Rule** to
-Applications, and it lives in your dock like anything else.
+That writes the app to `release/mac-arm64/The Rule.app` (and a `.dmg` beside
+it). Install it with:
 
-**The first time you open it, macOS will refuse.** The app is not signed with a
-paid Apple developer certificate, so Gatekeeper treats it as unidentified.
-Right-click (or Control-click) the app in Applications and choose **Open**, then
-**Open** again in the dialog. You only do this once — after that it opens
-normally.
+```bash
+ditto "release/mac-arm64/The Rule.app" "/Applications/The Rule.app"
+xattr -dr com.apple.quarantine "/Applications/The Rule.app"
+```
+
+Then open it from Applications, and it lives in your dock like anything else.
+
+**Use `ditto`, not a Finder drag, and never run `codesign` on it.** An Electron
+app's `Contents/Frameworks` is built from symlinks; a copy that flattens them
+produces an app that dies at launch with *Library not loaded: @rpath/Electron
+Framework*. `ditto` preserves them. The binaries inside already carry Electron's
+own signature, so signing it yourself only risks breaking the bundle.
+
+The `xattr` line clears the quarantine flag macOS attaches to anything freshly
+downloaded or copied out of a disk image. Without it you get a warning that the
+app is unidentified or damaged — which only means it has no paid Apple developer
+certificate, not that anything is wrong with it.
 
 If you'd rather not package it at all, `npm run serve` runs the same app at
 `http://localhost:4321` in a browser tab.

@@ -46,7 +46,7 @@ Design ethos (from the prototype, keep it): austere, typographic, dark, calm. Fi
 - **Frontend:** **React + Vite + TypeScript**. No CSS framework — the prototype's hand-rolled aesthetic is the target; extract its palette and type choices (Fraunces / Newsreader / IBM Plex Mono; ink/bone/brass palette) into CSS variables. Bundle the fonts locally (the packaged app must not depend on Google Fonts being reachable).
 - **Migrations:** plain numbered SQL files run at boot (track applied migrations in a `migrations` table). No ORM — the schema is small; hand-written SQL keeps the implementing model honest.
 
-**Signing:** assume no Apple Developer account. Ad-hoc sign the build (`codesign --force --deep -s -`); document in the README that first launch requires right-click → Open (Gatekeeper). Do not attempt notarization.
+**Signing:** assume no Apple Developer account. Do **not** ad-hoc sign the build: the bundled Electron binaries already carry their own signature, and running `codesign --deep` over an Electron bundle can damage it (a flattened `Contents/Frameworks` gives *Library not loaded: @rpath/Electron Framework* at launch). Install with `ditto` rather than a Finder drag, for the same symlink reason, and clear the quarantine flag with `xattr -dr com.apple.quarantine`. Do not attempt notarization.
 
 **Why not localStorage/purely client-side:** months of data must survive cache clears and app reinstalls; a SQLite file in Application Support is durable and trivially backed up.
 
