@@ -1,6 +1,11 @@
 # The Rule — Standards Tracking App · Architecture
 
-**Status:** Architecture / build spec. Written to be handed to an implementing model. Read the whole document before writing code. Section 11 lists open questions — where the owner hasn't answered one yet, build the stated default.
+**Status: built.** The app lives in [`the-rule/`](the-rule/) — see its [README](the-rule/README.md) for how to run and package it. This document remains the design record: what was decided, and why. Where the code and this document disagree, the code is what shipped.
+
+Two things were settled during the build and are worth recording here:
+
+- **A new standard begins on the day you are currently filling in**, not on the calendar date it was created. Before noon the app is focused on yesterday, so a standard added then would otherwise be invisible on the sheet in front of you. Nothing has been marked against a brand-new standard, so starting it a day back costs no history.
+- **Re-wording a standard still takes effect from today, never retroactively.** Backdating an edit would orphan marks already recorded against the previous version (marks point at a version row), so the rule in §4.1 holds strictly for edits and is relaxed only for creation.
 
 ---
 

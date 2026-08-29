@@ -1,0 +1,64 @@
+{
+  "name": "the-rule",
+  "productName": "The Rule",
+  "version": "1.0.0",
+  "description": "A local, single-user app for tracking personal standards.",
+  "private": true,
+  "type": "module",
+  "main": "dist/app/main.cjs",
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "tsx watch server/src/dev.ts",
+    "dev:web": "vite",
+    "build": "npm run build:web && npm run build:server",
+    "build:web": "vite build",
+    "build:server": "tsx scripts/build-server.ts",
+    "start": "npm run build && electron .",
+    "serve": "npm run build && tsx scripts/serve.ts",
+    "test": "tsx --test server/test/*.test.ts",
+    "smoke": "npm run build && node scripts/smoke-bundle.cjs",
+    "typecheck": "tsc --noEmit",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist": "npm run build && electron-builder --mac --arm64",
+    "postinstall": "electron-builder install-app-deps || echo 'Native rebuild skipped — run npm run rebuild before npm start'"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "express": "^4.21.1"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.12",
+    "@fontsource/fraunces": "^5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "@fontsource/newsreader": "^5.1.0",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "concurrently": "^9.1.0",
+    "esbuild": "^0.24.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  },
+  "build": {
+    "appId": "io.jpelevate.therule",
+    "productName": "The Rule",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["dist/**/*", "package.json", "node_modules/better-sqlite3/**/*"],
+    "asarUnpack": ["**/*.node", "node_modules/better-sqlite3/**/*"],
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "darkModeSupport": true
+    },
+    "npmRebuild": true
+  }
+}
