@@ -31,11 +31,9 @@ export default function Manage() {
     <>
       <p className="eyebrow">The standards themselves</p>
       <p className="serif muted" style={{ fontSize: 15, marginTop: 0 }}>
-        Editing a standard never rewrites the past. The version in force is
-        closed off and a new one opens from today, so every mark you have
-        already made keeps pointing at the words that were true when you made
-        it — which means a re-wording shows from today onward, not on days you
-        have already recorded. A standard you add now starts on the day you are
+        Editing never rewrites the past: a re-wording takes effect from today,
+        so days you have already recorded keep the words that were true when
+        you marked them. A standard you add now starts on the day you are
         currently filling in.
       </p>
 
@@ -112,8 +110,6 @@ export default function Manage() {
       </div>
 
       <Exemptions standards={standards} />
-      <DayTypes />
-      <Flags />
       <DataPanel />
     </>
   );
@@ -339,99 +335,6 @@ function Exemptions({ standards }: { standards: StandardVersion[] }) {
           ))}
         </div>
       )}
-    </section>
-  );
-}
-
-/** "I'm working this Sunday" — day type is context, and sometimes it matters. */
-function DayTypes() {
-  const [date, setDate] = useState(trackingDate());
-  const [current, setCurrent] = useState<string>('auto');
-
-  useEffect(() => {
-    void api.day(date).then((d) => setCurrent(d.dayTypeSetting));
-  }, [date]);
-
-  return (
-    <section className="panel">
-      <h2>Day types</h2>
-      <p className="serif muted" style={{ fontSize: 15 }}>
-        Days are normal Monday to Thursday, work on Friday and Saturday, rest on
-        Sunday. Nothing is released by a work day — this is context for the
-        trends, and the honest record of when the bar had you.
-      </p>
-      <div className="row wrap" style={{ marginTop: 14, gap: 8 }}>
-        <input
-          type="date" value={date} onChange={(e) => setDate(e.target.value)}
-          style={{
-            width: 'auto', fontFamily: 'var(--mono)', fontSize: 12,
-            background: 'var(--ink)', color: 'var(--bone)',
-            border: '1px solid var(--rule)', borderRadius: 2, padding: '8px 10px',
-          }}
-        />
-        {(['auto', 'normal', 'work', 'rest'] as const).map((t) => (
-          <button
-            key={t}
-            className="mini"
-            style={current === t ? { borderColor: 'var(--brass)', color: 'var(--bone)' } : undefined}
-            onClick={async () => {
-              await track(api.saveDay(date, { dayType: t }));
-              setCurrent(t);
-            }}
-          >{t}</button>
-        ))}
-      </div>
-      <p className="dimmed" style={{ fontSize: 11, marginTop: 10 }}>
-        {longDate(date)} — {current === 'auto' ? 'following the weekday' : `set to ${current}`}
-      </p>
-    </section>
-  );
-}
-
-function Flags() {
-  const [flags, setFlags] = useState<{ id: number; label: string; active: number }[]>([]);
-  const [label, setLabel] = useState('');
-
-  const load = useCallback(() => api.flags().then(setFlags), []);
-  useEffect(() => { void load(); }, [load]);
-
-  return (
-    <section className="panel">
-      <h2>Noticed, not scored</h2>
-      <p className="serif muted" style={{ fontSize: 15 }}>
-        Things worth seeing in the record without turning them into a pass or a
-        fail — the fluid thirty minutes of meditation, what came through the
-        feed, what was escape rather than interest.
-      </p>
-      {flags.map((f) => (
-        <div className="row" key={f.id} style={{ marginTop: 8 }}>
-          <span className="serif" style={{ flex: 1, fontSize: 15, opacity: f.active ? 1 : 0.45 }}>
-            {f.label}
-          </span>
-          <button
-            className="mini"
-            onClick={async () => {
-              await track(api.updateFlag(f.id, { active: !f.active }));
-              void load();
-            }}
-          >{f.active ? 'hide' : 'show'}</button>
-        </div>
-      ))}
-      <div className="row" style={{ marginTop: 14 }}>
-        <input
-          type="text" value={label} onChange={(e) => setLabel(e.target.value)}
-          placeholder="Something else to notice"
-        />
-        <button
-          className="mini"
-          disabled={!label.trim()}
-          onClick={async () => {
-            await track(api.createFlag(label.trim()));
-            setLabel('');
-            void load();
-          }}
-        >add</button>
-      </div>
     </section>
   );
 }

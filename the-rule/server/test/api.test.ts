@@ -28,7 +28,8 @@ test('the seed is the owner’s ten standards', () => {
   assert.equal(standards[0].name, 'Wake by 09:00', 'the wake-up leads');
   assert.equal(standards[0].weekdays, 'MTWTFS-', 'Sunday is released');
   assert.equal(byName(standards, 'Evening routine').weekdays, 'MTWTFSS', 'every day');
-  assert.equal(byName(standards, 'Evening routine').steps.length, 5);
+  assert.equal(byName(standards, 'Morning routine').weekdays, 'MTWTFSS', 'every day');
+  assert.equal(byName(standards, 'Evening routine').steps.length, 6);
   assert.equal(byName(standards, 'Weekly review').weekdays, '-----S-', 'Saturday only');
   // Nothing typed in: every standard is a tick.
   assert.deepEqual([...new Set(standards.map((s) => s.kind))].sort(),
@@ -39,26 +40,28 @@ test('the seed is the owner’s ten standards', () => {
 test('Sunday releases the Monday-to-Saturday standards and keeps the rest', () => {
   const { db } = tempDb();
   const sun = store.getDay(db, SUN);
-  assert.equal(sun.dayType, 'rest');
   assert.equal(byName(sun.cells, 'Wake by').status, 'released');
   assert.equal(byName(sun.cells, 'Content creation').status, 'released');
   assert.equal(byName(sun.cells, 'Reading').status, 'released');
   assert.equal(byName(sun.cells, 'No TV').status, 'released');
   assert.equal(byName(sun.cells, 'No porn').status, 'unanswered', 'every day, no exceptions');
+  assert.equal(byName(sun.cells, 'Morning routine').status, 'unanswered', 'runs every day');
   assert.equal(byName(sun.cells, 'Instagram').status, 'unanswered');
   assert.equal(byName(sun.cells, 'Evening routine').status, 'unanswered', 'runs every day');
   db.close();
 });
 
-test('Saturday does not ask for tomorrow’s plan', () => {
+test('the evening routine runs every night, planning included', () => {
   const { db } = tempDb();
-  const sat = byName(store.getDay(db, SAT).cells, 'Evening routine');
-  const plan = sat.steps.find((s) => s.name.startsWith('Plan'))!;
-  assert.equal(plan.applicable, false);
-  assert.equal(sat.steps.find((s) => s.name === 'Journal')!.applicable, true);
-
-  const mon = byName(store.getDay(db, MON).cells, 'Evening routine');
-  assert.equal(mon.steps.find((s) => s.name.startsWith('Plan'))!.applicable, true);
+  for (const date of [MON, SAT, SUN]) {
+    const cell = byName(store.getDay(db, date).cells, 'Evening routine');
+    assert.equal(cell.status, 'unanswered', `asked on ${date}`);
+    for (const step of cell.steps) {
+      assert.equal(step.applicable, true, `${step.name} applies on ${date}`);
+    }
+  }
+  const steps = byName(store.getDay(db, MON).cells, 'Evening routine').steps;
+  assert.equal(steps.at(-1)!.name, 'Read before bed', 'reading closes the day');
   db.close();
 });
 
@@ -79,7 +82,6 @@ test('a full day can be recorded and survives a restart', () => {
   for (const s of morning.steps) store.setStep(db, MON, s.id, true);
 
   store.setDayFields(db, MON, { note: 'Slow start, finished strong.' });
-  store.setFlag(db, MON, 1, true);
   db.close();
 
   const again = openDatabase(file);
@@ -93,7 +95,6 @@ test('a full day can be recorded and survives a restart', () => {
   assert.equal(byName(view.cells, 'Morning routine').status, 'kept',
     'a completed checklist marks itself kept');
   assert.equal(view.note, 'Slow start, finished strong.');
-  assert.equal(view.flags.find((f) => f.id === 1)!.on, true);
   again.close();
 });
 
@@ -222,8 +223,8 @@ test('the CSV export writes one honest row per standard per day', () => {
   store.setMark(db, MON, wake.id, 'kept', '');
   const csv = store.exportCsv(db);
   const lines = csv.trim().split('\n');
-  assert.equal(lines[0], 'date,weekday,day_type,standard,status,reason');
+  assert.equal(lines[0], 'date,weekday,standard,status,reason');
   assert.ok(lines.some((l) => l.includes('"Wake by 09:00",kept')));
-  assert.ok(lines.some((l) => l.includes('Mon,normal')));
+  assert.ok(lines.some((l) => l.startsWith(`${MON},Mon,`)));
   db.close();
 });

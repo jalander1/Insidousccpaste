@@ -65,27 +65,8 @@ export function createApp(db: DB, opts: ServerOptions) {
     return store.getDay(db, req.params.date);
   }));
 
-  app.put('/api/flag/:date/:flagId', wrap((req) => {
-    store.setFlag(db, req.params.date, Number(req.params.flagId), !!req.body?.on);
-    return store.getDay(db, req.params.date);
-  }));
-
-  // ------------------------------------------------------------------ week
   app.get('/api/week/:weekStart', wrap((req) =>
     store.getWeek(db, mondayOf(req.params.weekStart))));
-
-  app.put('/api/week/:weekStart', wrap((req) => {
-    const ws = mondayOf(req.params.weekStart);
-    store.setWeekPlan(db, ws, req.body ?? {});
-    return store.getWeek(db, ws);
-  }));
-
-  // ----------------------------------------------------------------- month
-  app.get('/api/month/:month', wrap((req) => store.getMonth(db, req.params.month)));
-  app.put('/api/month/:month', wrap((req) => {
-    store.setMonth(db, req.params.month, req.body ?? {});
-    return store.getMonth(db, req.params.month);
-  }));
 
   // ------------------------------------------------------------- standards
   app.get('/api/standards', wrap(() => store.currentStandards(db)));
@@ -112,14 +93,6 @@ export function createApp(db: DB, opts: ServerOptions) {
     const { date, lineageId } = req.body ?? {};
     store.clearExemption(db, date, Number(lineageId));
     return store.getDay(db, date);
-  }));
-
-  // ----------------------------------------------------------------- flags
-  app.get('/api/flags', wrap(() => store.listFlags(db)));
-  app.post('/api/flags', wrap((req) => store.createFlag(db, req.body?.label ?? '')));
-  app.put('/api/flags/:id', wrap((req) => {
-    store.updateFlag(db, Number(req.params.id), req.body ?? {});
-    return store.listFlags(db);
   }));
 
   // ---------------------------------------------------------------- trends

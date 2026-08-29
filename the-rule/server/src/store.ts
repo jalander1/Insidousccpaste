@@ -1,18 +1,16 @@
 import type { DB } from './db.js';
 import {
   addDays, mondayOf, monthOf, rangeDates, toISO, trackingDate, weekdayIndex,
-  lastDayOfMonth, type ISODate,
+  type ISODate,
 } from '../../shared/dates.js';
-import {
-  checklistComplete, resolveCell, resolveDayType, stepApplies,
-} from '../../shared/resolve.js';
+import { checklistComplete, resolveCell, stepApplies } from '../../shared/resolve.js';
 import { computeStreaks, keptPercent, tally } from '../../shared/streaks.js';
 import type {
-  CellStatus, DayCell, DayType, DayTypeSetting, DayView, Kind, MonthView,
-  RoutineStep, StandardVersion, TrendStandard, TrendsView, WeekPlan, WeekView,
+  CellStatus, DayCell, DayView, Kind, RoutineStep, StandardVersion,
+  TrendStandard, TrendsView, WeekView,
 } from '../../shared/types.js';
 
-/** The prototype's prompts, one per weekday, Monday first. */
+/** One prompt per weekday, Monday first. */
 export const PROMPTS = [
   'What did today ask of you that you did not want to give?',
   'Where did you reach for comfort?',
@@ -32,8 +30,6 @@ const now = () => new Date().toISOString();
 interface StandardRow {
   id: number; lineage_id: number; display_order: number; name: string;
   definition: string; kind: Kind; weekdays: string;
-  applies_on_rest: 'schedule' | 'always' | 'never';
-  applies_on_work: 'schedule' | 'always' | 'never';
   effective_from: string; effective_to: string | null;
 }
 
@@ -53,7 +49,6 @@ function toStandard(r: StandardRow, steps: RoutineStep[]): StandardVersion {
   return {
     id: r.id, lineageId: r.lineage_id, displayOrder: r.display_order,
     name: r.name, definition: r.definition, kind: r.kind, weekdays: r.weekdays,
-    appliesOnRest: r.applies_on_rest, appliesOnWork: r.applies_on_work,
     effectiveFrom: r.effective_from, effectiveTo: r.effective_to,
     steps: steps.filter((s) => s.standardId === r.id)
       .sort((a, b) => a.stepOrder - b.stepOrder),
@@ -98,17 +93,8 @@ export function allVersions(db: DB): StandardVersion[] {
 
 // ---------------------------------------------------------------------- day
 
-function dayRow(db: DB, date: ISODate) {
-  return db.prepare('SELECT * FROM day WHERE date = ?').get(date) as
-    { date: string; day_type: DayTypeSetting; note: string; prompt_answered: string } | undefined;
-}
-
 function ensureDay(db: DB, date: ISODate): void {
   db.prepare('INSERT OR IGNORE INTO day (date) VALUES (?)').run(date);
-}
-
-export function dayTypeSettingFor(db: DB, date: ISODate): DayTypeSetting {
-  return dayRow(db, date)?.day_type ?? 'auto';
 }
 
 function exemptionsFor(db: DB, date: ISODate): Map<number, string> {
@@ -118,9 +104,8 @@ function exemptionsFor(db: DB, date: ISODate): Map<number, string> {
 }
 
 export function getDay(db: DB, date: ISODate): DayView {
-  const row = dayRow(db, date);
-  const setting = row?.day_type ?? 'auto';
-  const dayType = resolveDayType(date, setting);
+  const row = db.prepare('SELECT * FROM day WHERE date = ?').get(date) as
+    { note: string } | undefined;
   const standards = standardsAt(db, date);
   const exempt = exemptionsFor(db, date);
 
@@ -144,7 +129,7 @@ export function getDay(db: DB, date: ISODate): DayView {
       definition: s.definition,
       kind: s.kind,
       displayOrder: s.displayOrder,
-      status: resolveCell(s, date, dayType, isExempt, mark?.status),
+      status: resolveCell(s, date, isExempt, mark?.status),
       reason: mark?.reason ?? '',
       exemptReason: isExempt ? (exempt.get(s.lineageId) || '') : null,
       steps: s.steps.map((st) => ({
@@ -155,34 +140,14 @@ export function getDay(db: DB, date: ISODate): DayView {
     };
   });
 
-  const flags = (db.prepare('SELECT id, label FROM flag_def WHERE active = 1 ORDER BY id')
-    .all() as { id: number; label: string }[]).map((f) => ({
-    ...f,
-    on: !!db.prepare('SELECT 1 FROM day_flag WHERE date = ? AND flag_id = ?')
-      .get(date, f.id),
-  }));
-
-  return {
-    date,
-    dayTypeSetting: setting,
-    dayType,
-    note: row?.note ?? '',
-    prompt: promptFor(date),
-    flags,
-    cells,
-  };
+  return { date, note: row?.note ?? '', prompt: promptFor(date), cells };
 }
 
-export function setDayFields(
-  db: DB, date: ISODate, fields: { note?: string; dayType?: DayTypeSetting },
-): void {
+export function setDayFields(db: DB, date: ISODate, fields: { note?: string }): void {
   ensureDay(db, date);
   if (fields.note !== undefined) {
     db.prepare('UPDATE day SET note = ?, prompt_answered = ? WHERE date = ?')
       .run(fields.note, promptFor(date), date);
-  }
-  if (fields.dayType !== undefined) {
-    db.prepare('UPDATE day SET day_type = ? WHERE date = ?').run(fields.dayType, date);
   }
 }
 
@@ -235,30 +200,7 @@ export function setStep(db: DB, date: ISODate, stepId: number, checked: boolean)
   else if (current?.status === 'kept') setMark(db, date, step.standard_id, 'unanswered', '');
 }
 
-export function setFlag(db: DB, date: ISODate, flagId: number, on: boolean): void {
-  ensureDay(db, date);
-  if (on) {
-    db.prepare('INSERT OR IGNORE INTO day_flag (date, flag_id) VALUES (?, ?)')
-      .run(date, flagId);
-  } else {
-    db.prepare('DELETE FROM day_flag WHERE date = ? AND flag_id = ?').run(date, flagId);
-  }
-}
-
 // --------------------------------------------------------------------- week
-
-function weekPlanRow(db: DB, weekStart: ISODate): WeekPlan {
-  const r = db.prepare('SELECT * FROM week WHERE week_start = ?').get(weekStart) as any;
-  return {
-    weekStart,
-    priority1: r?.priority_1 ?? '',
-    priority2: r?.priority_2 ?? '',
-    priority3: r?.priority_3 ?? '',
-    onePercent: r?.one_percent ?? '',
-    review: r?.review ?? '',
-    reviewedAt: r?.reviewed_at ?? null,
-  };
-}
 
 export function getWeek(db: DB, weekStart: ISODate): WeekView {
   const dates = rangeDates(weekStart, addDays(weekStart, 6));
@@ -266,19 +208,15 @@ export function getWeek(db: DB, weekStart: ISODate): WeekView {
 
   // Resolve every date independently so a mid-week edit to a standard shows
   // the definition that was actually in force on each day.
-  const perDate = dates.map((date) => {
-    const setting = dayTypeSettingFor(db, date);
-    return {
-      date,
-      dayType: resolveDayType(date, setting),
-      standards: standardsAt(db, date),
-      exempt: exemptionsFor(db, date),
-      marks: new Map<number, { status: 'kept' | 'broken'; reason: string }>(
-        (db.prepare('SELECT standard_id, status, reason FROM mark WHERE date = ?')
-          .all(date) as any[]).map((m) => [m.standard_id, { status: m.status, reason: m.reason }]),
-      ),
-    };
-  });
+  const perDate = dates.map((date) => ({
+    date,
+    standards: standardsAt(db, date),
+    exempt: exemptionsFor(db, date),
+    marks: new Map<number, { status: 'kept' | 'broken'; reason: string }>(
+      (db.prepare('SELECT standard_id, status, reason FROM mark WHERE date = ?')
+        .all(date) as any[]).map((m) => [m.standard_id, { status: m.status, reason: m.reason }]),
+    ),
+  }));
 
   const lineages = new Map<number, { name: string; definition: string; kind: Kind; order: number }>();
   for (const d of perDate) {
@@ -307,113 +245,18 @@ export function getWeek(db: DB, weekStart: ISODate): WeekView {
         return {
           date: d.date,
           standardId: s.id,
-          status: resolveCell(s, d.date, d.dayType, d.exempt.has(lineageId), mark?.status),
+          status: resolveCell(s, d.date, d.exempt.has(lineageId), mark?.status),
           reason: mark?.reason ?? '',
         };
       }),
     }));
 
-  const counts = tally(rows.flatMap((r) => r.cells.map((c) => c.status)));
-
   return {
     weekStart,
-    plan: weekPlanRow(db, weekStart),
-    days: perDate.map((d) => ({
-      date: d.date, dayType: d.dayType, isToday: d.date === today,
-    })),
+    days: perDate.map((d) => ({ date: d.date, isToday: d.date === today })),
     rows,
-    tally: counts,
+    tally: tally(rows.flatMap((r) => r.cells.map((c) => c.status))),
   };
-}
-
-export function setWeekPlan(
-  db: DB, weekStart: ISODate,
-  f: Partial<Omit<WeekPlan, 'weekStart' | 'reviewedAt'>> & { markReviewed?: boolean },
-): void {
-  db.prepare('INSERT OR IGNORE INTO week (week_start) VALUES (?)').run(weekStart);
-  const map: Record<string, string> = {
-    priority1: 'priority_1', priority2: 'priority_2', priority3: 'priority_3',
-    onePercent: 'one_percent', review: 'review',
-  };
-  for (const [key, col] of Object.entries(map)) {
-    const v = (f as any)[key];
-    if (v !== undefined) {
-      db.prepare(`UPDATE week SET ${col} = ? WHERE week_start = ?`).run(v, weekStart);
-    }
-  }
-  if (f.markReviewed !== undefined) {
-    db.prepare('UPDATE week SET reviewed_at = ? WHERE week_start = ?')
-      .run(f.markReviewed ? now() : null, weekStart);
-  }
-}
-
-// -------------------------------------------------------------------- month
-
-export function getMonth(db: DB, month: string): MonthView {
-  const r = db.prepare('SELECT * FROM month WHERE month = ?').get(month) as any;
-  const from = `${month}-01`;
-  const to = lastDayOfMonth(month);
-  const statuses: CellStatus[] = [];
-  const weekBuckets = new Map<ISODate, CellStatus[]>();
-
-  for (const date of rangeDates(from, to)) {
-    const day = getDayStatuses(db, date);
-    statuses.push(...day);
-    const wk = mondayOf(date);
-    if (!weekBuckets.has(wk)) weekBuckets.set(wk, []);
-    weekBuckets.get(wk)!.push(...day);
-  }
-
-  const counts = tally(statuses);
-  let goals: { text: string; done: boolean }[] = [];
-  try { goals = JSON.parse(r?.goals ?? '[]'); } catch { goals = []; }
-
-  return {
-    month,
-    goals,
-    workingOn: r?.working_on ?? '',
-    review: r?.review ?? '',
-    reviewedAt: r?.reviewed_at ?? null,
-    stats: { ...counts, percent: keptPercent(counts.kept, counts.broken) },
-    weeks: [...weekBuckets.entries()].sort().map(([weekStart, s]) => {
-      const t = tally(s);
-      return { weekStart, kept: t.kept, broken: t.broken, percent: keptPercent(t.kept, t.broken) };
-    }),
-  };
-}
-
-export function setMonth(
-  db: DB, month: string,
-  f: { goals?: { text: string; done: boolean }[]; workingOn?: string;
-       review?: string; markReviewed?: boolean },
-): void {
-  db.prepare('INSERT OR IGNORE INTO month (month) VALUES (?)').run(month);
-  if (f.goals !== undefined) {
-    db.prepare('UPDATE month SET goals = ? WHERE month = ?')
-      .run(JSON.stringify(f.goals), month);
-  }
-  if (f.workingOn !== undefined) {
-    db.prepare('UPDATE month SET working_on = ? WHERE month = ?').run(f.workingOn, month);
-  }
-  if (f.review !== undefined) {
-    db.prepare('UPDATE month SET review = ? WHERE month = ?').run(f.review, month);
-  }
-  if (f.markReviewed !== undefined) {
-    db.prepare('UPDATE month SET reviewed_at = ? WHERE month = ?')
-      .run(f.markReviewed ? now() : null, month);
-  }
-}
-
-/** Every resolved status on one date, used by the aggregate views. */
-function getDayStatuses(db: DB, date: ISODate): CellStatus[] {
-  const dayType = resolveDayType(date, dayTypeSettingFor(db, date));
-  const exempt = exemptionsFor(db, date);
-  const marks = new Map<number, 'kept' | 'broken'>(
-    (db.prepare('SELECT standard_id, status FROM mark WHERE date = ?')
-      .all(date) as any[]).map((m) => [m.standard_id, m.status]),
-  );
-  return standardsAt(db, date).map((s) =>
-    resolveCell(s, date, dayType, exempt.has(s.lineageId), marks.get(s.id)));
 }
 
 // ------------------------------------------------------------------- trends
@@ -422,10 +265,6 @@ export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
   const dates = rangeDates(from, to);
 
   // Pull everything once; per-date queries across months get slow fast.
-  const dayTypes = new Map<string, DayTypeSetting>(
-    (db.prepare('SELECT date, day_type FROM day WHERE date BETWEEN ? AND ?')
-      .all(from, to) as any[]).map((r) => [r.date, r.day_type]),
-  );
   const exemptions = new Set<string>(
     (db.prepare('SELECT date, lineage_id FROM exemption WHERE date BETWEEN ? AND ?')
       .all(from, to) as any[]).map((r) => `${r.date}|${r.lineage_id}`),
@@ -441,9 +280,8 @@ export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
       .all(from, to) as any[]).map((r) => `${r.date}|${r.step_id}`),
   );
 
-  const versions = allVersions(db);
   const byLineage = new Map<number, StandardVersion[]>();
-  for (const v of versions) {
+  for (const v of allVersions(db)) {
     if (!byLineage.has(v.lineageId)) byLineage.set(v.lineageId, []);
     byLineage.get(v.lineageId)!.push(v);
   }
@@ -462,7 +300,6 @@ export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
     const reasons: { date: ISODate; reason: string }[] = [];
     const weekMap = new Map<ISODate, CellStatus[]>();
     const monthMap = new Map<string, CellStatus[]>();
-    const typeMap = new Map<DayType, CellStatus[]>();
     const stepStats = new Map<string, { stepId: number; missed: number; total: number }>();
 
     for (const date of dates) {
@@ -470,11 +307,8 @@ export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
         (x) => x.effectiveFrom <= date && (x.effectiveTo === null || date <= x.effectiveTo),
       );
       if (!v) continue;
-      const dayType = resolveDayType(date, dayTypes.get(date) ?? 'auto');
       const mark = marks.get(`${date}|${v.id}`);
-      const status = resolveCell(
-        v, date, dayType, exemptions.has(`${date}|${lineageId}`), mark?.status,
-      );
+      const status = resolveCell(v, date, exemptions.has(`${date}|${lineageId}`), mark?.status);
 
       statuses.push(status);
       heatmap.push({ date, status });
@@ -486,8 +320,6 @@ export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
       const mo = monthOf(date);
       if (!monthMap.has(mo)) monthMap.set(mo, []);
       monthMap.get(mo)!.push(status);
-      if (!typeMap.has(dayType)) typeMap.set(dayType, []);
-      typeMap.get(dayType)!.push(status);
 
       // Which step breaks the routine? Grouped by name so it survives versioning.
       if (v.kind === 'checklist' && status !== 'released') {
@@ -519,7 +351,6 @@ export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
       streak: computeStreaks(statuses),
       byWeek: bucket(weekMap).map(({ key, ...r }) => ({ weekStart: key as ISODate, ...r })),
       byMonth: bucket(monthMap).map(({ key, ...r }) => ({ month: key as string, ...r })),
-      byDayType: bucket(typeMap).map(({ key, ...r }) => ({ dayType: key as DayType, ...r })),
       heatmap,
       steps: [...stepStats.entries()].map(([name, s]) => ({ name, ...s })),
       reasons: reasons.reverse(),
@@ -527,16 +358,7 @@ export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
   }
 
   standards.sort((a, b) => a.displayOrder - b.displayOrder);
-
-  const flags = (db.prepare('SELECT id, label FROM flag_def ORDER BY id')
-    .all() as { id: number; label: string }[]).map((f) => ({
-    ...f,
-    count: (db.prepare(
-      'SELECT COUNT(*) n FROM day_flag WHERE flag_id = ? AND date BETWEEN ? AND ?',
-    ).get(f.id, from, to) as { n: number }).n,
-  }));
-
-  return { from, to, standards, flags };
+  return { from, to, standards };
 }
 
 // ------------------------------------------------------- standards: editing
@@ -550,7 +372,6 @@ export function updateStandard(
   db: DB, lineageId: number,
   fields: {
     name?: string; definition?: string; kind?: Kind; weekdays?: string;
-    appliesOnRest?: string; appliesOnWork?: string;
     steps?: { name: string; detail: string; weekdays: string | null }[];
   },
 ): StandardVersion | null {
@@ -568,8 +389,6 @@ export function updateStandard(
     definition: fields.definition ?? cur.definition,
     kind: fields.kind ?? cur.kind,
     weekdays: fields.weekdays ?? cur.weekdays,
-    rest: fields.appliesOnRest ?? cur.applies_on_rest,
-    work: fields.appliesOnWork ?? cur.applies_on_work,
   };
   const nextSteps = fields.steps
     ?? steps.map((s) => ({ name: s.name, detail: s.detail, weekdays: s.weekdays }));
@@ -577,7 +396,6 @@ export function updateStandard(
   const unchanged =
     next.name === cur.name && next.definition === cur.definition &&
     next.kind === cur.kind && next.weekdays === cur.weekdays &&
-    next.rest === cur.applies_on_rest && next.work === cur.applies_on_work &&
     JSON.stringify(nextSteps) === JSON.stringify(
       steps.map((s) => ({ name: s.name, detail: s.detail, weekdays: s.weekdays })));
   if (unchanged) return currentStandards(db).find((s) => s.lineageId === lineageId) ?? null;
@@ -588,9 +406,8 @@ export function updateStandard(
     // Safe for marks either way — they point at this same row.
     if (cur.effective_from >= trackingDate()) {
       db.prepare(
-        `UPDATE standard SET name=?, definition=?, kind=?, weekdays=?,
-           applies_on_rest=?, applies_on_work=? WHERE id=?`,
-      ).run(next.name, next.definition, next.kind, next.weekdays, next.rest, next.work, cur.id);
+        'UPDATE standard SET name=?, definition=?, kind=?, weekdays=? WHERE id=?',
+      ).run(next.name, next.definition, next.kind, next.weekdays, cur.id);
       replaceSteps(db, cur.id, nextSteps);
       return;
     }
@@ -598,10 +415,9 @@ export function updateStandard(
       .run(addDays(today, -1), cur.id);
     const info = db.prepare(
       `INSERT INTO standard (lineage_id, display_order, name, definition, kind,
-         weekdays, applies_on_rest, applies_on_work, effective_from)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         weekdays, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).run(lineageId, cur.display_order, next.name, next.definition, next.kind,
-      next.weekdays, next.rest, next.work, today);
+      next.weekdays, today);
     replaceSteps(db, Number(info.lastInsertRowid), nextSteps);
   })();
 
@@ -653,9 +469,7 @@ export function retireStandard(db: DB, lineageId: number): void {
 }
 
 export function reorderStandards(db: DB, lineageIds: number[]): void {
-  const stmt = db.prepare(
-    'UPDATE standard SET display_order = ? WHERE lineage_id = ?',
-  );
+  const stmt = db.prepare('UPDATE standard SET display_order = ? WHERE lineage_id = ?');
   db.transaction(() => lineageIds.forEach((id, i) => stmt.run(i + 1, id)))();
 }
 
@@ -678,24 +492,6 @@ export function listExemptions(db: DB) {
     .all();
 }
 
-// ------------------------------------------------------------------- flags
-
-export function listFlags(db: DB) {
-  return db.prepare('SELECT id, label, active FROM flag_def ORDER BY id').all();
-}
-
-export function createFlag(db: DB, label: string) {
-  const info = db.prepare('INSERT INTO flag_def (label) VALUES (?)').run(label);
-  return { id: Number(info.lastInsertRowid), label, active: 1 };
-}
-
-export function updateFlag(db: DB, id: number, f: { label?: string; active?: boolean }) {
-  if (f.label !== undefined) db.prepare('UPDATE flag_def SET label = ? WHERE id = ?').run(f.label, id);
-  if (f.active !== undefined) {
-    db.prepare('UPDATE flag_def SET active = ? WHERE id = ?').run(f.active ? 1 : 0, id);
-  }
-}
-
 // ------------------------------------------------------------------ export
 
 export function exportAll(db: DB) {
@@ -708,41 +504,33 @@ export function exportAll(db: DB) {
     mark: t('mark'),
     step_check: t('step_check'),
     exemption: t('exemption'),
-    flag_def: t('flag_def'),
-    day_flag: t('day_flag'),
-    week: t('week'),
-    month: t('month'),
   };
 }
 
-/** One row per date per standard, with the resolved status — the shape a spreadsheet wants. */
+/** One row per date per standard, with the resolved status. */
 export function exportCsv(db: DB): string {
   const bounds = db.prepare(
     `SELECT MIN(d) f, MAX(d) t FROM (
        SELECT MIN(date) d FROM mark UNION SELECT MAX(date) FROM mark
        UNION SELECT MIN(date) FROM day UNION SELECT MAX(date) FROM day)`,
   ).get() as { f: string | null; t: string | null };
-  if (!bounds.f || !bounds.t) return 'date,weekday,day_type,standard,status,reason\n';
+  if (!bounds.f || !bounds.t) return 'date,weekday,standard,status,reason\n';
 
   const esc = (s: string) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-  const lines = ['date,weekday,day_type,standard,status,reason'];
+  const lines = ['date,weekday,standard,status,reason'];
   const marks = new Map<string, { status: string; reason: string }>(
     (db.prepare('SELECT date, standard_id, status, reason FROM mark').all() as any[])
       .map((m) => [`${m.date}|${m.standard_id}`, m]),
   );
 
   for (const date of rangeDates(bounds.f, bounds.t)) {
-    const dayType = resolveDayType(date, dayTypeSettingFor(db, date));
     const exempt = exemptionsFor(db, date);
     for (const s of standardsAt(db, date)) {
       const mark = marks.get(`${date}|${s.id}`);
-      const status = resolveCell(
-        s, date, dayType, exempt.has(s.lineageId), mark?.status as any,
-      );
+      const status = resolveCell(s, date, exempt.has(s.lineageId), mark?.status as any);
       lines.push([
         date,
         ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekdayIndex(date)],
-        dayType,
         esc(s.name),
         status,
         esc(mark?.reason ?? ''),

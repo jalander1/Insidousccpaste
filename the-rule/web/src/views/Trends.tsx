@@ -62,17 +62,6 @@ export default function Trends() {
             />
           ))}
 
-          {view.flags.some((f) => f.count > 0) && (
-            <section className="panel">
-              <p className="lead">Noticed, not scored</p>
-              {view.flags.map((f) => (
-                <div className="bar-row" key={f.id}>
-                  <span className="serif" style={{ flex: 1, fontSize: 15 }}>{f.label}</span>
-                  <span className="bar-val">{f.count}</span>
-                </div>
-              ))}
-            </section>
-          )}
         </>
       )}
     </>
@@ -107,7 +96,6 @@ function Hero({ s }: { s: TrendStandard }) {
         </div>
       </div>
       <Heatmap s={s} />
-      <ByDayType s={s} />
       {s.reasons.length > 0 && <Reasons s={s} limit={4} />}
     </div>
   );
@@ -132,8 +120,7 @@ function Card({ s, open, onToggle }: { s: TrendStandard; open: boolean; onToggle
             <div className="stat"><div className="n muted">{s.unanswered}</div><div className="k">unanswered</div></div>
             <div className="stat"><div className="n">{s.streak.best}</div><div className="k">best run</div></div>
           </div>
-          <ByDayType s={s} />
-          {s.byWeek.length > 1 && (
+              {s.byWeek.length > 1 && (
             <div className="bars">
               {s.byWeek.slice(-12).map((w) => (
                 <div className="bar-row" key={w.weekStart}>
@@ -163,24 +150,6 @@ function Heatmap({ s }: { s: TrendStandard }) {
           className={`heatcell ${h.status}`}
           title={`${longDate(h.date)} — ${h.status}`}
         />
-      ))}
-    </div>
-  );
-}
-
-function ByDayType({ s }: { s: TrendStandard }) {
-  const rows = s.byDayType.filter((d) => d.percent !== null);
-  if (rows.length < 2) return null;
-  return (
-    <div className="bars">
-      {rows.map((d) => (
-        <div className="bar-row" key={d.dayType}>
-          <span className="bar-label">{d.dayType} days</span>
-          <span className="bar-track">
-            <span className="bar-fill" style={{ width: `${d.percent ?? 0}%` }} />
-          </span>
-          <span className="bar-val">{d.percent}%</span>
-        </div>
       ))}
     </div>
   );

@@ -1,9 +1,6 @@
 import type { ISODate } from './dates.js';
 
 export type Kind = 'binary' | 'abstain' | 'checklist';
-export type DayTypeSetting = 'auto' | 'normal' | 'work' | 'rest';
-export type DayType = 'normal' | 'work' | 'rest';
-export type AppliesRule = 'schedule' | 'always' | 'never';
 
 /** The four states a cell can be in. Only kept/broken are ever stored. */
 export type CellStatus = 'kept' | 'broken' | 'released' | 'unanswered';
@@ -16,8 +13,6 @@ export interface StandardVersion {
   definition: string;
   kind: Kind;
   weekdays: string;
-  appliesOnRest: AppliesRule;
-  appliesOnWork: AppliesRule;
   effectiveFrom: ISODate;
   effectiveTo: ISODate | null;
   steps: RoutineStep[];
@@ -54,28 +49,14 @@ export interface DayCell {
 
 export interface DayView {
   date: ISODate;
-  dayTypeSetting: DayTypeSetting;
-  dayType: DayType;
   note: string;
   prompt: string;
-  flags: { id: number; label: string; on: boolean }[];
   cells: DayCell[];
-}
-
-export interface WeekPlan {
-  weekStart: ISODate;
-  priority1: string;
-  priority2: string;
-  priority3: string;
-  onePercent: string;
-  review: string;
-  reviewedAt: string | null;
 }
 
 export interface WeekView {
   weekStart: ISODate;
-  plan: WeekPlan;
-  days: { date: ISODate; dayType: DayType; isToday: boolean }[];
+  days: { date: ISODate; isToday: boolean }[];
   rows: {
     lineageId: number;
     name: string;
@@ -85,16 +66,6 @@ export interface WeekView {
     cells: { date: ISODate; standardId: number | null; status: CellStatus; reason: string }[];
   }[];
   tally: { kept: number; broken: number; unanswered: number };
-}
-
-export interface MonthView {
-  month: string;
-  goals: { text: string; done: boolean }[];
-  workingOn: string;
-  review: string;
-  reviewedAt: string | null;
-  stats: { kept: number; broken: number; unanswered: number; percent: number | null };
-  weeks: { weekStart: ISODate; kept: number; broken: number; percent: number | null }[];
 }
 
 export interface StreakInfo {
@@ -114,9 +85,8 @@ export interface TrendStandard {
   streak: StreakInfo;
   byWeek: { weekStart: ISODate; kept: number; broken: number; percent: number | null }[];
   byMonth: { month: string; kept: number; broken: number; percent: number | null }[];
-  byDayType: { dayType: DayType; kept: number; broken: number; percent: number | null }[];
   heatmap: { date: ISODate; status: CellStatus }[];
-  steps: { stepId: number; name: string; missed: number; total: number }[];
+  steps: { name: string; stepId: number; missed: number; total: number }[];
   reasons: { date: ISODate; reason: string }[];
 }
 
@@ -124,5 +94,4 @@ export interface TrendsView {
   from: ISODate;
   to: ISODate;
   standards: TrendStandard[];
-  flags: { id: number; label: string; count: number }[];
 }

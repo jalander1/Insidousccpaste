@@ -82,8 +82,9 @@ days are never locked — honesty over ceremony.
 | **unanswered** | empty square, not yet filled in |
 | **released** | a dot: not asked of you that day, and left out of the counting |
 
-Sunday releases the Monday–Saturday standards. So does an exception you set
-yourself. A released day never breaks a streak and never counts against a
+Sunday releases the Monday–Saturday standards — the wake-up, content
+creation, reading, no TV. The routines and the abstains run every day. So does
+an exception you set yourself. A released day never breaks a streak and never counts against a
 percentage. An unanswered day is not counted as a failure either — it is simply
 not evidence.
 
@@ -101,15 +102,6 @@ you made it — so when the evening sit went from an hour to thirty minutes, las
 month's data still means what it meant. Retiring works the same way: it stops
 being asked, and the record stays.
 
-### Day types
-
-Monday–Thursday are normal, Friday and Saturday are work days, Sunday is rest.
-Nothing is released by a work day — the evening routine runs every day. Day type
-is context: it's the honest record of when the bar had you, and Trends splits
-your kept-rate by it, so you can see whether work days actually cost you
-anything. Override any single date in **Manage → Day types** ("I'm working this
-Sunday").
-
 ### Exceptions
 
 **Manage → Exceptions** releases one standard on one day, with a reason —
@@ -121,18 +113,18 @@ app will not stop you either way.
 
 ## The screens
 
-- **Today** — the ledger. Tick each standard, expand the two routines to work
-  through their steps, answer the day's prompt, mark what you noticed.
-- **Week** — the grid, seven columns, exactly as the printed sheet was. Also
-  holds the week's three priorities and where you'll be 1% better.
-- **Review** — Saturday's weekly review: what broke and every reason, a
-  reflection, then next week's priorities. And the monthly view: goals, what
-  you're working on, the month in review.
+- **Today** — the ledger. Tick each standard kept or broken, work through the
+  two routines step by step, and answer the day's prompt.
+- **Week** — the grid, seven columns, exactly as the printed sheet was.
 - **Trends** — the wake-up first, then every standard: streaks, kept-rate by
-  week and by month, a heatmap, which routine step slips most, and all the
-  reasons.
-- **Manage** — edit and reorder standards, edit routine steps, exceptions, day
-  types, the "noticed, not scored" flags, and your data.
+  week and by month, a heatmap, which routine step slips most, and every reason
+  a standard broke.
+- **Manage** — edit and reorder standards, edit routine steps, set exceptions,
+  and get at your data.
+
+This is a standard tracker, not a goal setter. There is nowhere to write
+priorities, monthly goals or a weekly review, by design — the weekly review is a
+standard you tick on a Saturday, and where you do it is your business.
 
 ---
 
@@ -148,7 +140,7 @@ scripts/     build and serve
 
 ```bash
 npm run dev        # API on 4321, Vite on 5173, edit-and-reload
-npm test           # 28 tests over resolution, streaks, and the store
+npm test           # 26 tests over resolution, streaks, and the store
 npm run typecheck
 ```
 

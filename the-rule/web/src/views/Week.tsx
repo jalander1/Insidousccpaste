@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { track, useDebouncedSave } from '../save.js';
-import {
-  addDays, DOW_LETTER, fromISO, longDate, mondayOf, shortDate, toISO,
-} from '../../../shared/dates.js';
+import { track } from '../save.js';
+import { addDays, DOW_LETTER, fromISO, longDate, mondayOf, shortDate, toISO }
+  from '../../../shared/dates.js';
 import type { CellStatus, WeekView } from '../../../shared/types.js';
 
 const NEXT: Record<CellStatus, CellStatus> = {
@@ -15,31 +14,11 @@ export default function Week({
 }: { date: string; setDate: (d: string) => void; onOpenDay: (d: string) => void }) {
   const [weekStart, setWeekStart] = useState(mondayOf(date));
   const [week, setWeek] = useState<WeekView | null>(null);
-  const [plan, setPlan] = useState({ priority1: '', priority2: '', priority3: '', onePercent: '' });
-  const planFor = useRef('');
 
-  /** Refresh the grid only. The plan fields may be mid-sentence. */
-  const refresh = useCallback(async (ws: string) => {
-    setWeek(await api.week(ws));
-  }, []);
-
-  const load = useCallback(async (ws: string) => {
-    const v = await api.week(ws);
-    setWeek(v);
-    planFor.current = ws;
-    setPlan({
-      priority1: v.plan.priority1, priority2: v.plan.priority2,
-      priority3: v.plan.priority3, onePercent: v.plan.onePercent,
-    });
-  }, []);
+  const load = useCallback(async (ws: string) => { setWeek(await api.week(ws)); }, []);
 
   useEffect(() => { void load(weekStart); }, [weekStart, load]);
   useEffect(() => { setWeekStart(mondayOf(date)); }, [date]);
-
-  useDebouncedSave(plan, async (v) => {
-    if (planFor.current !== weekStart) return;
-    return api.saveWeek(weekStart, v);
-  });
 
   if (!week) return null;
 
@@ -54,10 +33,9 @@ export default function Week({
     // is the part of the record worth keeping.
     if (next !== 'broken' && reason.trim() &&
         !confirm(`Clear the reason you wrote?\n\n“${reason}”`)) return;
-    // A cell going broken needs its reason — that conversation belongs on the
-    // day itself, so send them there rather than asking in a cramped grid.
-    const v = await track(api.mark(d, standardId, next, ''));
-    if (v) void refresh(weekStart);
+    // A cell going broken needs its reason, and that conversation belongs on
+    // the day itself rather than in a cramped grid.
+    if (await track(api.mark(d, standardId, next, ''))) void load(weekStart);
   };
 
   return (
@@ -73,30 +51,6 @@ export default function Week({
           aria-label="Next week">→</button>
       </div>
 
-      <section className="panel" style={{ marginTop: 0, marginBottom: 26 }}>
-        <p className="lead">The three that matter this week</p>
-        {(['priority1', 'priority2', 'priority3'] as const).map((k, i) => (
-          <div className="field" key={k}>
-            <input
-              type="text"
-              value={plan[k]}
-              onChange={(e) => setPlan({ ...plan, [k]: e.target.value })}
-              placeholder={`Priority ${i + 1}`}
-            />
-          </div>
-        ))}
-        <div className="field">
-          <label htmlFor="onepct">Where I will be 1% better</label>
-          <input
-            id="onepct"
-            type="text"
-            value={plan.onePercent}
-            onChange={(e) => setPlan({ ...plan, onePercent: e.target.value })}
-            placeholder="One small thing, sharpened."
-          />
-        </div>
-      </section>
-
       <table className="grid">
         <thead>
           <tr>
@@ -108,11 +62,10 @@ export default function Week({
                   onClick={() => setDate(d.date)}
                   onDoubleClick={() => onOpenDay(d.date)}
                   aria-label={longDate(d.date)}
-                  title={`${longDate(d.date)} — ${d.dayType}`}
+                  title={longDate(d.date)}
                 >
                   <span className="dow">{DOW_LETTER[i]}</span>
                   <span className="dnum">{fromISO(d.date).getDate()}</span>
-                  <span className={`dtype ${d.dayType}`} />
                 </button>
               </th>
             ))}

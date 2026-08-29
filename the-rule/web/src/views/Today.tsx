@@ -31,8 +31,6 @@ export default function Today({
   const today = toISO(new Date());
   const isTracking = date === trackingDate();
 
-  const apply = (v: DayView | undefined) => { if (v) setDay(v); };
-
   return (
     <>
       <div className="datebar">
@@ -43,9 +41,6 @@ export default function Today({
           {date === today || date === addDays(today, -1) ? ' · ' : ''}
           {longDate(date)}
         </span>
-        {day.dayType !== 'normal' && (
-          <span className={`badge ${day.dayType}`}>{day.dayType}</span>
-        )}
         <button className="navbtn" onClick={() => setDate(addDays(date, 1))}
           disabled={date >= today} aria-label="Next day">→</button>
         {!isTracking && (
@@ -55,7 +50,13 @@ export default function Today({
 
       <div className="ledger">
         {day.cells.map((cell, i) => (
-          <Entry key={cell.lineageId} cell={cell} index={i + 1} date={date} onChange={apply} />
+          <Entry
+            key={cell.lineageId}
+            cell={cell}
+            index={i + 1}
+            date={date}
+            onChange={(v) => { if (v) setDay(v); }}
+          />
         ))}
       </div>
 
@@ -69,19 +70,6 @@ export default function Today({
           placeholder="Write it plainly. Nobody else reads this."
           style={{ minHeight: 130 }}
         />
-
-        <div className="noticed">
-          <p className="lead">Noticed, not scored</p>
-          {day.flags.map((f) => (
-            <button
-              key={f.id}
-              className={`flag${f.on ? ' on' : ''}`}
-              onClick={() => track(api.flag(date, f.id, !f.on)).then(apply)}
-            >
-              <span className="dot" />{f.label}
-            </button>
-          ))}
-        </div>
       </section>
 
       <details className="defs">
@@ -90,14 +78,10 @@ export default function Today({
           <div className="def" key={c.lineageId}>
             <span className="n">{String(i + 1).padStart(2, '0')}</span>
             <div className="t">{c.name}</div>
-            <div className="d">{c.definition}</div>
+            {c.definition && <div className="d">{c.definition}</div>}
           </div>
         ))}
       </details>
-
-      <p className="legend">
-        A day left unanswered stays unanswered — this is a record, not a scold.
-      </p>
     </>
   );
 }
@@ -150,7 +134,7 @@ function Entry({
             <div className="entry-released-note">
               {cell.exemptReason
                 ? `Released — ${cell.exemptReason}`
-                : 'Released today. Not asked, not counted.'}
+                : 'Released today.'}
             </div>
           ) : (
             cell.definition && <div className="entry-def">{cell.definition}</div>
@@ -181,11 +165,11 @@ function Entry({
               className={`step${s.checked ? ' done' : ''}${s.applicable ? '' : ' na'}`}
               disabled={!s.applicable}
               onClick={() => toggleStep(s.id, !s.checked)}
+              aria-pressed={s.checked}
             >
               <span className="box" />
               <span>
                 {s.name}
-                {!s.applicable && ' — not tonight'}
                 {s.detail && <span className="step-detail"><br />{s.detail}</span>}
               </span>
             </button>

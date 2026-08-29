@@ -4,11 +4,10 @@ import { useSavedFlash } from './save.js';
 import { trackingDate } from '../../shared/dates.js';
 import Today from './views/Today.js';
 import Week from './views/Week.js';
-import Review from './views/Review.js';
 import Trends from './views/Trends.js';
 import Manage from './views/Manage.js';
 
-const TABS = ['Today', 'Week', 'Review', 'Trends', 'Manage'] as const;
+const TABS = ['Today', 'Week', 'Trends', 'Manage'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function App() {
@@ -31,7 +30,6 @@ export default function App() {
   return (
     <div className="shell">
       <div className="titlebar" />
-      <p className="eyebrow">Standing rule · kept daily</p>
       <h1 className="masthead">The <em>Rule</em></h1>
 
       <nav className="tabs">
@@ -50,8 +48,6 @@ export default function App() {
         <Today date={date} setDate={setDate} />
       ) : tab === 'Week' ? (
         <Week date={date} setDate={setDate} onOpenDay={(d) => { setDate(d); setTab('Today'); }} />
-      ) : tab === 'Review' ? (
-        <Review date={date} />
       ) : tab === 'Trends' ? (
         <Trends />
       ) : (

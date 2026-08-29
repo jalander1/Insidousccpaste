@@ -68,7 +68,7 @@ button, input, textarea, select, a { -webkit-app-region: no-drag; }
 h1.masthead {
   font-family: var(--display);
   font-weight: 300; font-size: 40px; line-height: 1;
-  margin: 0 0 20px; letter-spacing: -0.01em;
+  margin: 0 0 22px; letter-spacing: -0.01em;
 }
 h1.masthead em { font-style: italic; color: var(--brass); }
 
@@ -178,11 +178,16 @@ input::placeholder, textarea::placeholder { color: var(--dimmer); }
 }
 .step:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 .step .box {
-  width: 13px; height: 13px; border: 1px solid var(--rule-lit); border-radius: 2px;
-  flex: none; margin-top: 4px;
+  width: 15px; height: 15px; border: 1px solid var(--rule-lit); border-radius: 2px;
+  flex: none; margin-top: 3px; position: relative;
 }
 .step.done { color: var(--bone); }
 .step.done .box { background: var(--brass); border-color: var(--brass); }
+.step.done .box::after {
+  content: ''; position: absolute; left: 4px; top: 1px;
+  width: 4px; height: 8px; border: solid var(--ink);
+  border-width: 0 1.5px 1.5px 0; transform: rotate(42deg);
+}
 .step.na { opacity: .4; cursor: default; }
 .step.na .box { border-style: dashed; }
 .step-detail {
@@ -202,12 +207,6 @@ input::placeholder, textarea::placeholder { color: var(--dimmer); }
 }
 .daycol .dow { display: block; font-size: 10px; letter-spacing: .12em; color: var(--dimmer); }
 .daycol .dnum { display: block; font-size: 14px; color: var(--dim); margin-top: 3px; }
-.daycol .dtype {
-  display: block; width: 3px; height: 3px; border-radius: 50%;
-  margin: 4px auto 0; background: transparent;
-}
-.daycol .dtype.work { background: var(--brass-lo); }
-.daycol .dtype.rest { background: var(--rule-lit); }
 .daycol.is-today .dow { color: var(--brass); }
 .daycol.is-today .dnum { color: var(--bone); }
 .daycol.is-sel { background: var(--panel); }
