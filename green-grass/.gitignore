@@ -3,3 +3,7 @@ dist/
 release/
 *.log
 .DS_Store
+
+# Regenerated per machine — tracking it only causes pull conflicts between
+# platforms, and this is a single-user app with conservative version ranges.
+package-lock.json
