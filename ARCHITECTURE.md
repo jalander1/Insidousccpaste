@@ -31,16 +31,21 @@ Design ethos (from the prototype, keep it): austere, typographic, dark, calm. Fi
 
 ## 3. Recommended stack
 
-**Local web app, single process:**
+**Target machine (owner-confirmed):** a recent MacBook (Apple Silicon, macOS). The owner wants a **double-clickable desktop app** — a real `.app` in `/Applications` with a dock icon, not an `npm start` browser tab. Build for `arm64` only; no Windows/Linux targets.
 
-- **Runtime:** Node.js (LTS). One process: an **Express (or Hono) server** that serves the built frontend statically and exposes a small JSON API. `npm start` boots it on `localhost:4321` and opens the browser.
-- **Database:** **SQLite** via `better-sqlite3` (synchronous, zero-config, one durable file). DB file lives at `~/.the-rule/rule.db` (create the directory on first run). This is the single source of truth.
-- **Frontend:** **React + Vite + TypeScript**. No CSS framework required — the prototype's hand-rolled CSS aesthetic is the target; extract its palette and type choices (Fraunces / Newsreader / IBM Plex Mono; ink/bone/brass palette) into CSS variables.
+**Architecture: Electron shell around an embedded local server.** One language (TypeScript) end to end — deliberately chosen over Tauri, whose Rust layer is the highest-risk part of a build like this for no benefit to a single-user tool.
+
+- **Shell:** **Electron** + **electron-builder** producing a `.dmg`/`.app` for `arm64`. The main process boots the server below, then opens a `BrowserWindow` pointed at it. Standard app behaviors: single-instance lock, window size persisted, ⌘Q quits.
+- **Server (inside the main process):** an **Express (or Hono) server** bound to `127.0.0.1` on a fixed port (e.g. 4321), serving the built frontend statically and exposing the JSON API in §9. Because the app is an ordinary HTTP client of its own server, `npm run dev` still works in a plain browser — develop everything there and treat the Electron shell as packaging, added in the final milestone.
+- **Database:** **SQLite** via `better-sqlite3` (synchronous, zero-config, one durable file) at `app.getPath('userData')/rule.db` (i.e. `~/Library/Application Support/The Rule/rule.db`). Single source of truth. ⚠️ Known gotcha: `better-sqlite3` is a native module and must be rebuilt for Electron's Node ABI — use `electron-rebuild` (or `electron-builder`'s automatic native rebuild); verify the packaged app opens the DB before calling milestone 6 done.
+- **Frontend:** **React + Vite + TypeScript**. No CSS framework — the prototype's hand-rolled aesthetic is the target; extract its palette and type choices (Fraunces / Newsreader / IBM Plex Mono; ink/bone/brass palette) into CSS variables. Bundle the fonts locally (the packaged app must not depend on Google Fonts being reachable).
 - **Migrations:** plain numbered SQL files run at boot (track applied migrations in a `migrations` table). No ORM — the schema is small; hand-written SQL keeps the implementing model honest.
 
-**Why not Electron/Tauri:** native packaging is the highest-risk part of a build like this and adds nothing to a single-user local tool. Keep the frontend/API split clean and a Tauri shell can be wrapped around it later if the owner wants a dock icon. **Why not localStorage/purely client-side:** months of data must survive browser cache clears; a SQLite file is trivially backed up.
+**Signing:** assume no Apple Developer account. Ad-hoc sign the build (`codesign --force --deep -s -`); document in the README that first launch requires right-click → Open (Gatekeeper). Do not attempt notarization.
 
-**Backups:** on every boot, copy `rule.db` to `~/.the-rule/backups/rule-YYYY-MM-DD.db` (keep last 30). Provide JSON and CSV export endpoints.
+**Why not localStorage/purely client-side:** months of data must survive cache clears and app reinstalls; a SQLite file in Application Support is durable and trivially backed up.
+
+**Backups:** on every app launch, copy `rule.db` to `<userData>/backups/rule-YYYY-MM-DD.db` (keep last 30). Provide JSON and CSV export endpoints, plus a "reveal data folder in Finder" action on the Manage screen.
 
 ---
 
@@ -243,29 +248,28 @@ Edit standards (creates new versions per §4.1), reorder, retire, add; edit chec
 
 ## 10. Build order (milestones for the implementing model)
 
-1. **Skeleton:** repo layout (`server/`, `web/`), Express + better-sqlite3 + migrations + seed data from §5/§6, `npm start` boots and opens the browser. *Accept: seed visible via `GET /api/standards`.*
+1. **Skeleton:** repo layout (`server/`, `web/`, `app/` for the Electron main process — untouched until milestone 7), Express + better-sqlite3 + migrations + seed data from §5/§6, `npm run dev` boots server + Vite in a plain browser. *Accept: seed visible via `GET /api/standards`.*
 2. **Today view:** resolution algorithm, tick-only marking, broken-reason capture, checklists with per-step weekdays, notes, flags, autosave, noon rollover. *Accept: a full day can be recorded and survives restart.*
 3. **Week view:** the grid + tallies + navigation + priorities/1% better.*Accept: visually and behaviorally faithful to the prototype.*
 4. **Review flows:** weekly (Saturday) and monthly.
 5. **Trends:** streaks, percentages, per-standard heatmaps, step-slippage, day-type split, reasons view.
-6. **Manage + safety:** standard editing with versioning, exemptions/day types, export, boot-time backups.
+6. **Manage + safety:** standard editing with versioning, exemptions/day types, export, launch-time backups.
+7. **Package for macOS:** Electron main process (boot server, open window, single-instance, `userData` DB path), `electron-rebuild` for better-sqlite3, `electron-builder` → `arm64` `.dmg`, ad-hoc codesign, bundled fonts, README first-launch note (right-click → Open). *Accept: on a Mac with no dev tooling, double-clicking the app opens it with seeded data, and data written there survives relaunch.*
 
-Each milestone should leave the app runnable. Write a handful of unit tests around the two algorithms that can silently rot: schedule/exemption resolution (§6 notes) and streak computation across released days and version changes.
+Milestones 1–6 run in a plain browser via `npm run dev`; each should leave the app runnable. Write a handful of unit tests around the two algorithms that can silently rot: schedule/exemption resolution (§6 notes) and streak computation across released days and version changes.
 
 ---
 
-## 11. Owner decisions (resolved) and the one open question
+## 11. Owner decisions (all resolved)
 
-These were open questions; the owner has answered them. **Build what's written here — it overrides anything contrary elsewhere in older documents.**
+These were open questions; the owner has answered them all. **Build what's written here — it overrides anything contrary elsewhere in older documents.**
 
 1. **Evening routine: every day, all seven.** Work evenings release nothing — "just makes it simple." The only carve-out is per-step: plan-tomorrow is not required Saturday night. Journal and plan-tomorrow stay inside the checklist (no split-out standards). A worked Sunday changes nothing else about Sunday.
 2. **Weekly review: Saturday. Reading and content creation: Mon–Sat**, one hour each, Sunday released.
 3. **Tick-only marking, everywhere.** No wake times, no minute counts, no typed numbers — "that goes too minuscule." Hitting the hour = one tick. See §4.3.
 4. **Morning-after entry, no nudges.** Before-noon shows yesterday; owner opens the app during end-of-day planning and in the morning before the work day. The app never notifies.
 
-**Still open (build the default meanwhile):**
-
-5. **Machine and form factor.** macOS, Windows, or Linux? Is a `npm start` + browser-tab app acceptable (**default: yes, browser tab, desktop-only**), or a double-clickable desktop app (Tauri wrap, adds build complexity)? Reachable from the phone on home Wi-Fi, or desktop-only (**default: desktop-only**)?
+5. **Machine and form factor: resolved.** A recent MacBook (Apple Silicon). The owner wants a **double-clickable desktop app** — build the Electron shell per §3, packaged as an `arm64` `.dmg`/`.app`. Desktop-only; no phone access needed (evenings are phone-free by rule anyway).
 
 The owner also noted the voice dictation may have missed a standard or two — the Manage screen's add/edit flow (§7.5) is the safety valve; nothing else needs to change for late additions.
 
