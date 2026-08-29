@@ -32,6 +32,13 @@ function WeekReview({ date }: { date: string }) {
   const [plan, setPlan] = useState({ priority1: '', priority2: '', priority3: '', onePercent: '' });
   const loadedFor = useRef('');
 
+  /** Refresh the summary only, never the text being written. */
+  const refresh = useCallback(async (ws: string) => {
+    const [v, n] = await Promise.all([api.week(ws), api.week(addDays(ws, 7))]);
+    setWeek(v);
+    setNext(n);
+  }, []);
+
   const load = useCallback(async (ws: string) => {
     const [v, n] = await Promise.all([api.week(ws), api.week(addDays(ws, 7))]);
     setWeek(v);
@@ -130,7 +137,7 @@ function WeekReview({ date }: { date: string }) {
           <button
             className="mini"
             onClick={() => track(api.saveWeek(weekStart, { markReviewed: !week.plan.reviewedAt }))
-              .then(() => load(weekStart))}
+              .then(() => refresh(weekStart))}
           >
             {week.plan.reviewedAt ? 'reviewed ✓' : 'mark reviewed'}
           </button>
@@ -289,7 +296,7 @@ function MonthReview({ date }: { date: string }) {
           <button
             className="mini"
             onClick={() => track(api.saveMonth(month, { markReviewed: !view.reviewedAt }))
-              .then(() => load(month))}
+              .then((v) => { if (v) setView(v); })}
           >
             {view.reviewedAt ? 'reviewed ✓' : 'mark reviewed'}
           </button>

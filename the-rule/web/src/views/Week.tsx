@@ -18,6 +18,11 @@ export default function Week({
   const [plan, setPlan] = useState({ priority1: '', priority2: '', priority3: '', onePercent: '' });
   const planFor = useRef('');
 
+  /** Refresh the grid only. The plan fields may be mid-sentence. */
+  const refresh = useCallback(async (ws: string) => {
+    setWeek(await api.week(ws));
+  }, []);
+
   const load = useCallback(async (ws: string) => {
     const v = await api.week(ws);
     setWeek(v);
@@ -41,13 +46,18 @@ export default function Week({
   const isThisWeek = mondayOf(toISO(new Date())) === weekStart;
   const selected = week.days.findIndex((d) => d.date === date);
 
-  const cycle = async (standardId: number | null, d: string, status: CellStatus) => {
+  const cycle = async (standardId: number | null, d: string, status: CellStatus,
+                       reason: string) => {
     if (standardId === null || status === 'released') return;
     const next = NEXT[status];
+    // Cycling off a broken cell deletes its reason. Ask first — that sentence
+    // is the part of the record worth keeping.
+    if (next !== 'broken' && reason.trim() &&
+        !confirm(`Clear the reason you wrote?\n\n“${reason}”`)) return;
     // A cell going broken needs its reason — that conversation belongs on the
     // day itself, so send them there rather than asking in a cramped grid.
     const v = await track(api.mark(d, standardId, next, ''));
-    if (v) void load(weekStart);
+    if (v) void refresh(weekStart);
   };
 
   return (
@@ -120,7 +130,7 @@ export default function Week({
                   <button
                     className={`mark ${c.status}`}
                     disabled={c.status === 'released'}
-                    onClick={() => cycle(c.standardId, c.date, c.status)}
+                    onClick={() => cycle(c.standardId, c.date, c.status, c.reason)}
                     title={c.reason || undefined}
                     aria-label={`${row.name}, ${longDate(c.date)}: ${c.status}`}
                   />

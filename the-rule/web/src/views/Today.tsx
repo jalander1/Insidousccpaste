@@ -111,18 +111,29 @@ function Entry({
   const [reason, setReason] = useState(cell.reason);
   const [askReason, setAskReason] = useState(false);
   const released = cell.status === 'released';
+  // Marking any other standard refetches the whole day, which would otherwise
+  // overwrite a reason still being typed with the empty one on the server.
+  const unsaved = useRef(false);
 
-  useEffect(() => { setReason(cell.reason); }, [cell.reason]);
+  useEffect(() => {
+    if (!unsaved.current) setReason(cell.reason);
+  }, [cell.reason]);
 
   // The "why" is the point of tracking at all — capture it while it is fresh.
   useDebouncedSave(reason, async (v) => {
     if (cell.status !== 'broken' || v === cell.reason) return;
-    return api.mark(date, cell.standardId, 'broken', v);
+    const out = await api.mark(date, cell.standardId, 'broken', v);
+    unsaved.current = false;
+    return out;
   });
 
   const set = async (status: 'kept' | 'broken') => {
     const next = cell.status === status ? 'unanswered' : status;
+    // Never discard a written reason to a stray click.
+    if (next !== 'broken' && reason.trim() &&
+        !confirm(`Clear the reason you wrote for "${cell.name}"?\n\n“${reason}”`)) return;
     setAskReason(next === 'broken');
+    if (next !== 'broken') { unsaved.current = false; setReason(''); }
     onChange(await track(api.mark(date, cell.standardId, next, next === 'broken' ? reason : '')));
   };
 
@@ -190,7 +201,7 @@ function Entry({
             type="text"
             value={reason}
             autoFocus={askReason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => { unsaved.current = true; setReason(e.target.value); }}
             placeholder="One sentence is enough."
           />
         </div>
