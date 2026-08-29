@@ -18,18 +18,13 @@
     "test": "tsx --test server/test/*.test.ts",
     "smoke": "npm run build && node scripts/smoke-bundle.cjs",
     "typecheck": "tsc --noEmit",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "dist": "npm run build && electron-builder --mac --arm64",
-    "postinstall": "electron-builder install-app-deps || echo 'Native rebuild skipped — run npm run rebuild before npm start'"
+    "dist": "npm run build && electron-builder --mac --arm64"
   },
   "dependencies": {
-    "better-sqlite3": "^11.5.0",
+    "better-sqlite3": "^13.0.3",
     "express": "^4.21.1"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
-    "electron": "^44.0.0",
-    "electron-builder": "^26.0.12",
     "@fontsource/fraunces": "^5.1.0",
     "@fontsource/ibm-plex-mono": "^5.1.0",
     "@fontsource/newsreader": "^5.1.0",
@@ -40,6 +35,8 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "concurrently": "^9.1.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.12",
     "esbuild": "^0.24.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -50,15 +47,32 @@
   "build": {
     "appId": "io.jpelevate.therule",
     "productName": "The Rule",
-    "directories": { "output": "release", "buildResources": "build" },
-    "files": ["dist/**/*", "package.json", "node_modules/better-sqlite3/**/*"],
-    "asarUnpack": ["**/*.node", "node_modules/better-sqlite3/**/*"],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "asarUnpack": [
+      "**/*.node",
+      "node_modules/better-sqlite3/**/*"
+    ],
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity",
       "identity": null,
       "darkModeSupport": true
     },
-    "npmRebuild": true
+    "npmRebuild": false
   }
 }

@@ -10,11 +10,11 @@ no notifications. You open it because you decided to.
 
 ## Getting it running on your Mac
 
-You need [Node.js](https://nodejs.org) (version 20 or newer). Then, in this
+You need [Node.js](https://nodejs.org) (version 22 or newer). Then, in this
 folder:
 
 ```bash
-npm install        # also rebuilds the database driver for the app shell
+npm install        # nothing compiles — the database driver ships prebuilt
 npm start          # builds everything and opens the app
 ```
 
@@ -136,7 +136,7 @@ scripts/     build and serve
 
 ```bash
 npm run dev        # API on 4321, Vite on 5173, edit-and-reload
-npm test           # 26 tests over resolution, streaks, and the store
+npm test           # 28 tests over resolution, streaks, and the store
 npm run typecheck
 ```
 
