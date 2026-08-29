@@ -1,6 +1,6 @@
 {
-  "name": "the-rule",
-  "productName": "The Rule",
+  "name": "green-grass",
+  "productName": "Green Grass",
   "version": "1.0.0",
   "description": "A local, single-user app for tracking personal standards.",
   "private": true,
@@ -45,8 +45,8 @@
     "vite": "^5.4.11"
   },
   "build": {
-    "appId": "io.jpelevate.therule",
-    "productName": "The Rule",
+    "appId": "io.jpelevate.greengrass",
+    "productName": "Green Grass",
     "directories": {
       "output": "release",
       "buildResources": "build"

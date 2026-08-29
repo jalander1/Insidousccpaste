@@ -31,8 +31,31 @@ function saveWindowState(w: BrowserWindow) {
   } catch { /* never block quitting over this */ }
 }
 
+/**
+ * macOS derives the data folder from the app's name, so renaming the app
+ * would otherwise leave the existing record behind in the old folder. Carry
+ * it across once, and only when there is nothing here to overwrite.
+ */
+function adoptPreviousData(userData: string): void {
+  try {
+    if (fs.existsSync(path.join(userData, 'rule.db'))) return;
+    const previous = path.join(path.dirname(userData), 'The Rule');
+    if (!fs.existsSync(path.join(previous, 'rule.db'))) return;
+    fs.mkdirSync(userData, { recursive: true });
+    for (const name of fs.readdirSync(previous)) {
+      fs.cpSync(path.join(previous, name), path.join(userData, name), { recursive: true });
+    }
+    console.log(`Adopted the record from ${previous}`);
+  } catch (err) {
+    // Starting fresh would be bad; failing to start would be worse.
+    console.error('Could not carry over the previous data folder:', err);
+  }
+}
+
 async function boot() {
-  const dbPath = path.join(app.getPath('userData'), 'rule.db');
+  const userData = app.getPath('userData');
+  adoptPreviousData(userData);
+  const dbPath = path.join(userData, 'rule.db');
 
   const { url } = await startServer({
     dbPath,
@@ -47,7 +70,7 @@ async function boot() {
     ...state,
     minWidth: 420,
     minHeight: 560,
-    title: 'The Rule',
+    title: 'Green Grass',
     backgroundColor: '#0C121C',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 14, y: 16 },

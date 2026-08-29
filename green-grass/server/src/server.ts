@@ -105,14 +105,14 @@ export function createApp(db: DB, opts: ServerOptions) {
   // ---------------------------------------------------------------- export
   app.get('/api/export.json', (_req, res) => {
     res.setHeader('Content-Disposition',
-      `attachment; filename="the-rule-${toISO(new Date())}.json"`);
+      `attachment; filename="green-grass-${toISO(new Date())}.json"`);
     res.json(store.exportAll(db));
   });
 
   app.get('/api/export.csv', (_req, res) => {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition',
-      `attachment; filename="the-rule-${toISO(new Date())}.csv"`);
+      `attachment; filename="green-grass-${toISO(new Date())}.csv"`);
     res.send(store.exportCsv(db));
   });
 

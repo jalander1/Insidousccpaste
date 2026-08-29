@@ -57,4 +57,4 @@ INSERT INTO routine_step (standard_id, step_order, name, detail, weekdays) VALUE
 (9, 5, 'Meditate — 30 minutes', '', NULL),
 (9, 6, 'Read before bed', '', NULL);
 
-INSERT INTO setting (key, value) VALUES ('schema_owner', 'the-rule');
+INSERT INTO setting (key, value) VALUES ('schema_owner', 'green-grass');

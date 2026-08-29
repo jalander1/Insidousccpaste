@@ -1,4 +1,4 @@
-# The Rule
+# Green Grass
 
 A local, single-user app for keeping your standards and gathering months of
 honest data about which held, which broke, and why.
@@ -24,12 +24,12 @@ To build the double-clickable app:
 npm run dist
 ```
 
-That writes the app to `release/mac-arm64/The Rule.app` (and a `.dmg` beside
+That writes the app to `release/mac-arm64/Green Grass.app` (and a `.dmg` beside
 it). Install it with:
 
 ```bash
-ditto "release/mac-arm64/The Rule.app" "/Applications/The Rule.app"
-xattr -dr com.apple.quarantine "/Applications/The Rule.app"
+ditto "release/mac-arm64/Green Grass.app" "/Applications/Green Grass.app"
+xattr -dr com.apple.quarantine "/Applications/Green Grass.app"
 ```
 
 Then open it from Applications, and it lives in your dock like anything else.
@@ -53,14 +53,16 @@ If you'd rather not package it at all, `npm run serve` runs the same app at
 ## Where your data is
 
 ```
-~/Library/Application Support/The Rule/rule.db          your data
-~/Library/Application Support/The Rule/backups/          a dated copy per launch, last 30 kept
+~/Library/Application Support/Green Grass/rule.db          your data
+~/Library/Application Support/Green Grass/backups/         a dated copy per launch, last 30 kept
 ```
 
-One SQLite file. Copy it anywhere to back it up. **Manage → Your data** shows
+One SQLite file. Copy it anywhere to back it up. (If you ran this when it was
+called The Rule, the app carries that folder across on first launch — nothing
+recorded is lost.) **Manage → Your data** shows
 the path, reveals it in Finder, and exports everything as JSON or CSV.
 
-In development (`npm run dev`) the database is `~/.the-rule/rule.db` instead, so
+In development (`npm run dev`) the database is `~/.green-grass/rule.db` instead, so
 experiments never touch the real record.
 
 ---

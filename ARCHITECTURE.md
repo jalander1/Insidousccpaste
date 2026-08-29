@@ -1,11 +1,14 @@
-# The Rule — Standards Tracking App · Architecture
+# Green Grass — Standards Tracking App · Architecture
 
-**Status: built.** The app lives in [`the-rule/`](the-rule/) — see its [README](the-rule/README.md) for how to run and package it. This document remains the design record: what was decided, and why. Where the code and this document disagree, the code is what shipped.
+**Status: built.** The app lives in [`green-grass/`](green-grass/) — see its [README](green-grass/README.md) for how to run and package it. This document remains the design record: what was decided, and why. Where the code and this document disagree, the code is what shipped.
 
-Two things were settled during the build and are worth recording here:
+Since it was first used, the app has been **cut back to a standard tracker and renamed Green Grass**. Removed outright: day classification (§4.2's normal/work/rest — it changed nothing in practice), the week's priorities and "1% better", the whole weekly/monthly review and goals screen (§7.3), and the noticed-not-scored flags. What survives is the ledger, the grid, trends and management of the standards themselves. Read §4.2 and §7.3 as the reasoning that was tried, not as what runs.
+
+Three things were settled during the build and are worth recording here:
 
 - **A new standard begins on the day you are currently filling in**, not on the calendar date it was created. Before noon the app is focused on yesterday, so a standard added then would otherwise be invisible on the sheet in front of you. Nothing has been marked against a brand-new standard, so starting it a day back costs no history.
 - **Re-wording a standard still takes effect from today, never retroactively.** Backdating an edit would orphan marks already recorded against the previous version (marks point at a version row), so the rule in §4.1 holds strictly for edits and is relaxed only for creation.
+- **Renaming the app moves its data folder**, because macOS derives that folder from the product name. The Electron main process therefore adopts the previous folder on first launch when the new one is empty — a rename must never cost the record.
 
 ---
 
@@ -42,7 +45,7 @@ Design ethos (from the prototype, keep it): austere, typographic, dark, calm. Fi
 
 - **Shell:** **Electron** + **electron-builder** producing a `.dmg`/`.app` for `arm64`. The main process boots the server below, then opens a `BrowserWindow` pointed at it. Standard app behaviors: single-instance lock, window size persisted, ⌘Q quits.
 - **Server (inside the main process):** an **Express (or Hono) server** bound to `127.0.0.1` on a fixed port (e.g. 4321), serving the built frontend statically and exposing the JSON API in §9. Because the app is an ordinary HTTP client of its own server, `npm run dev` still works in a plain browser — develop everything there and treat the Electron shell as packaging, added in the final milestone.
-- **Database:** **SQLite** via `better-sqlite3` (synchronous, zero-config, one durable file) at `app.getPath('userData')/rule.db` (i.e. `~/Library/Application Support/The Rule/rule.db`). Single source of truth. **Use v13 or later, which is a Node-API build shipping a prebuilt binary per platform.** That matters more than it sounds: the pre-v13 releases were V8-API builds that had to be recompiled against each Electron version, and better-sqlite3 11 simply cannot compile against Electron 44's V8 at all. Node-API is ABI-stable, so nothing compiles on install, no `electron-rebuild` step exists, and an Electron upgrade cannot break the database layer. Set `npmRebuild: false` so electron-builder does not try to rebuild it anyway.
+- **Database:** **SQLite** via `better-sqlite3` (synchronous, zero-config, one durable file) at `app.getPath('userData')/rule.db` (i.e. `~/Library/Application Support/Green Grass/rule.db`). Single source of truth. **Use v13 or later, which is a Node-API build shipping a prebuilt binary per platform.** That matters more than it sounds: the pre-v13 releases were V8-API builds that had to be recompiled against each Electron version, and better-sqlite3 11 simply cannot compile against Electron 44's V8 at all. Node-API is ABI-stable, so nothing compiles on install, no `electron-rebuild` step exists, and an Electron upgrade cannot break the database layer. Set `npmRebuild: false` so electron-builder does not try to rebuild it anyway.
 - **Frontend:** **React + Vite + TypeScript**. No CSS framework — the prototype's hand-rolled aesthetic is the target; extract its palette and type choices (Fraunces / Newsreader / IBM Plex Mono; ink/bone/brass palette) into CSS variables. Bundle the fonts locally (the packaged app must not depend on Google Fonts being reachable).
 - **Migrations:** plain numbered SQL files run at boot (track applied migrations in a `migrations` table). No ORM — the schema is small; hand-written SQL keeps the implementing model honest.
 

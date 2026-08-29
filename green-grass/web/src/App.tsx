@@ -30,7 +30,7 @@ export default function App() {
   return (
     <div className="shell">
       <div className="titlebar" />
-      <h1 className="masthead">The <em>Rule</em></h1>
+      <h1 className="masthead">Green <em>Grass</em></h1>
 
       <nav className="tabs">
         {TABS.map((t) => (
