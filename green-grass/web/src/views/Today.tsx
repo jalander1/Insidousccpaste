@@ -157,13 +157,12 @@ function Entry({
         )}
       </div>
 
-      {!released && cell.steps.length > 0 && (
+      {!released && cell.steps.some((s) => s.applicable) && (
         <div className="steps">
-          {cell.steps.map((s) => (
+          {cell.steps.filter((s) => s.applicable).map((s) => (
             <button
               key={s.id}
-              className={`step${s.checked ? ' done' : ''}${s.applicable ? '' : ' na'}`}
-              disabled={!s.applicable}
+              className={`step${s.checked ? ' done' : ''}`}
               onClick={() => toggleStep(s.id, !s.checked)}
               aria-pressed={s.checked}
             >

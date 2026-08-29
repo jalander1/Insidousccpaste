@@ -50,11 +50,12 @@ INSERT INTO routine_step (standard_id, step_order, name, detail, weekdays) VALUE
 (2, 3, 'TRE — 15 minutes', '', NULL),
 (2, 4, 'Meditate — 45 minutes', '', NULL),
 
-(9, 1, 'Phone away downstairs', '', NULL),
+(9, 1, 'Phone away downstairs', '', 'MTWT--S'),
 (9, 2, 'Plan & reflect on the day', '', NULL),
 (9, 3, 'Journal', 'Even one minute counts.', NULL),
 (9, 4, 'Set out tomorrow''s outfit', '', NULL),
 (9, 5, 'Meditate — 30 minutes', '', NULL),
-(9, 6, 'Read before bed', '', NULL);
+(9, 6, 'Read before bed', '', 'MTWT--S'),
+(9, 7, 'Read or listen to a podcast', '', '----FS-');
 
 INSERT INTO setting (key, value) VALUES ('schema_owner', 'green-grass');

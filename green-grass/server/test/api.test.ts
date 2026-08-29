@@ -29,7 +29,7 @@ test('the seed is the owner’s ten standards', () => {
   assert.equal(standards[0].weekdays, 'MTWTFS-', 'Sunday is released');
   assert.equal(byName(standards, 'Evening routine').weekdays, 'MTWTFSS', 'every day');
   assert.equal(byName(standards, 'Morning routine').weekdays, 'MTWTFSS', 'every day');
-  assert.equal(byName(standards, 'Evening routine').steps.length, 6);
+  assert.equal(byName(standards, 'Evening routine').steps.length, 7);
   assert.equal(byName(standards, 'Weekly review').weekdays, '-----S-', 'Saturday only');
   // Nothing typed in: every standard is a tick.
   assert.deepEqual([...new Set(standards.map((s) => s.kind))].sort(),
@@ -51,17 +51,53 @@ test('Sunday releases the Monday-to-Saturday standards and keeps the rest', () =
   db.close();
 });
 
+const tonight = (db: any, date: string) =>
+  byName(store.getDay(db, date).cells, 'Evening routine')
+    .steps.filter((s) => s.applicable).map((s) => s.name);
+
 test('the evening routine runs every night, planning included', () => {
   const { db } = tempDb();
   for (const date of [MON, SAT, SUN]) {
     const cell = byName(store.getDay(db, date).cells, 'Evening routine');
     assert.equal(cell.status, 'unanswered', `asked on ${date}`);
-    for (const step of cell.steps) {
-      assert.equal(step.applicable, true, `${step.name} applies on ${date}`);
+  }
+  // Every night: reflect, journal, tomorrow's outfit, the sit.
+  for (const date of [MON, SAT, SUN]) {
+    for (const name of ['Plan & reflect on the day', 'Journal',
+                        "Set out tomorrow's outfit", 'Meditate — 30 minutes']) {
+      assert.ok(tonight(db, date).includes(name), `${name} on ${date}`);
     }
   }
-  const steps = byName(store.getDay(db, MON).cells, 'Evening routine').steps;
-  assert.equal(steps.at(-1)!.name, 'Read before bed', 'reading closes the day');
+  db.close();
+});
+
+test('the late shifts keep the phone and swap the book for a podcast', () => {
+  const { db } = tempDb();
+  // Friday and Saturday: home at one in the morning, phone stays in the room.
+  for (const late of ['2026-08-28', SAT]) {
+    const steps = tonight(db, late);
+    assert.ok(!steps.includes('Phone away downstairs'), 'the phone may stay up');
+    assert.ok(!steps.includes('Read before bed'));
+    assert.ok(steps.includes('Read or listen to a podcast'));
+  }
+  // Every other night the book stands, and the phone goes downstairs.
+  for (const quiet of [MON, SUN]) {
+    const steps = tonight(db, quiet);
+    assert.ok(steps.includes('Phone away downstairs'));
+    assert.ok(steps.includes('Read before bed'));
+    assert.ok(!steps.includes('Read or listen to a podcast'));
+  }
+  db.close();
+});
+
+test('a Saturday checklist is complete without the released steps', () => {
+  const { db } = tempDb();
+  const evening = byName(store.getDay(db, SAT).cells, 'Evening routine');
+  for (const s of evening.steps.filter((x) => x.applicable)) {
+    store.setStep(db, SAT, s.id, true);
+  }
+  assert.equal(byName(store.getDay(db, SAT).cells, 'Evening routine').status, 'kept',
+    'ticking only what applies tonight is enough');
   db.close();
 });
 

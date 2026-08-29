@@ -86,7 +86,12 @@ days are never locked — honesty over ceremony.
 
 Sunday releases the Monday–Saturday standards — the wake-up, content
 creation, reading, no TV. The routines and the abstains run every day. So does
-an exception you set yourself. A released day never breaks a streak and never counts against a
+an exception you set yourself.
+
+Steps within a routine can be released too, so only tonight's steps are shown:
+Friday and Saturday are the late shifts, so the phone may stay in the room and
+a podcast stands in for the book. Ticking what applies is enough to keep the
+routine. A released day never breaks a streak and never counts against a
 percentage. An unanswered day is not counted as a failure either — it is simply
 not evidence.
 
