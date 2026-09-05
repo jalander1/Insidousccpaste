@@ -123,11 +123,33 @@ app will not stop you either way.
 - **Today** — the ledger. Tick each standard kept or broken, work through the
   two routines step by step, and answer the day's prompt.
 - **Week** — the grid, seven columns, exactly as the printed sheet was.
+- **Reflect** — somewhere to say what actually happened, to a Claude that has
+  read your record. For the weeks that went badly, or when a standard is
+  starting to feel wrong rather than merely hard.
 - **Trends** — the wake-up first, then every standard: streaks, kept-rate by
   week and by month, a heatmap, which routine step slips most, and every reason
   a standard broke.
 - **Manage** — edit and reorder standards, edit routine steps, set exceptions,
   and get at your data.
+
+### Reflect, and what leaves your machine
+
+Everything else in this app is local. Reflect is not: it sends your standards,
+your marks for the last thirty days, the reasons you wrote when something broke,
+and your recent notes to the Anthropic API, so the reply is about your actual
+week rather than habits in general. Nothing is sent until you press send, and
+nothing at all is sent until you add an API key under **Manage → Reflect**.
+Remove the key and the tab goes quiet again. The key is stored in your database
+and never handed back to the interface.
+
+Get a key from console.anthropic.com; it bills you by usage, on the order of a
+penny or two per conversation. Conversations are kept per day, alongside the
+marks, and can be deleted without touching anything else.
+
+It is told to be brief, to be specific about what is actually in your record, to
+ask rather than advise, and never to congratulate or scold. It is also told that
+your standards are editable — so if the record suggests one is badly written
+rather than merely difficult, it will say so.
 
 This is a standard tracker, not a goal setter. There is nowhere to write
 priorities, monthly goals or a weekly review, by design — the weekly review is a

@@ -110,6 +110,7 @@ export default function Manage() {
       </div>
 
       <Exemptions standards={standards} />
+      <ApiKeyPanel />
       <DataPanel />
     </>
   );
@@ -335,6 +336,52 @@ function Exemptions({ standards }: { standards: StandardVersion[] }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+function ApiKeyPanel() {
+  const [status, setStatus] = useState<{ configured: boolean; hint: string | null } | null>(null);
+  const [value, setValue] = useState('');
+  const load = useCallback(() => api.apiKey().then(setStatus), []);
+  useEffect(() => { void load(); }, [load]);
+
+  return (
+    <section className="panel">
+      <h2>Reflect</h2>
+      <p className="serif muted" style={{ fontSize: 15 }}>
+        The Reflect tab is the one part of this app that talks to something
+        outside your machine. Sending a message there sends your standards, your
+        marks for the last thirty days, the reasons you wrote when something
+        broke, and your recent notes to Anthropic, so the reply is about your
+        actual week. Nothing is sent unless you press send. Clear the key and
+        the tab goes quiet again.
+      </p>
+      <div className="row" style={{ marginTop: 14 }}>
+        <input
+          type="password" value={value} onChange={(e) => setValue(e.target.value)}
+          placeholder={status?.configured ? `key set, ending ${status.hint}` : 'sk-ant-…'}
+        />
+        <button
+          className="mini"
+          disabled={!value.trim()}
+          onClick={async () => {
+            await track(api.setApiKey(value.trim()));
+            setValue('');
+            void load();
+          }}
+        >save</button>
+        {status?.configured && (
+          <button
+            className="mini danger"
+            onClick={async () => {
+              if (!confirm('Remove the API key? Reflect stops working; nothing else changes.')) return;
+              await track(api.setApiKey(''));
+              void load();
+            }}
+          >remove</button>
+        )}
+      </div>
     </section>
   );
 }
