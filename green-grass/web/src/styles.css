@@ -421,30 +421,7 @@ details.defs[open] summary::before { content: '– '; }
   * { transition: none !important; }
 }
 
-/* ---------------------------------------------------------------- reflect */
-
-.chat { margin-bottom: 22px; }
-
-.msg { margin-bottom: 20px; }
-.msg p {
-  font-family: var(--serif); font-size: 16px; font-weight: 300;
-  line-height: 1.6; margin: 0 0 10px;
+.past-review {
+  border-left: 1px solid var(--rule); padding-left: 15px; margin-top: 18px;
 }
-.msg p:last-child { margin-bottom: 0; }
-
-.msg.user {
-  border-left: 1px solid var(--brass-lo); padding-left: 15px;
-}
-.msg.user p { color: var(--dim); }
-
-.msg.assistant p { color: var(--bone); }
-
-.chat-error {
-  font-family: var(--serif); font-size: 15px; font-weight: 300;
-  color: var(--broken); border-left: 1px solid var(--broken);
-  padding-left: 15px; margin: 16px 0;
-}
-
-.composer {
-  border-top: 1px solid var(--rule); padding-top: 18px;
-}
+.past-review .reason-text { margin-top: 4px; }

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
-import { track } from '../save.js';
+import { track, useDebouncedSave } from '../save.js';
 import { addDays, DOW_LETTER, fromISO, longDate, mondayOf, shortDate, toISO }
   from '../../../shared/dates.js';
 import type { CellStatus, WeekView } from '../../../shared/types.js';
@@ -14,11 +14,26 @@ export default function Week({
 }: { date: string; setDate: (d: string) => void; onOpenDay: (d: string) => void }) {
   const [weekStart, setWeekStart] = useState(mondayOf(date));
   const [week, setWeek] = useState<WeekView | null>(null);
+  const [review, setReview] = useState('');
+  const reviewFor = useRef('');
 
-  const load = useCallback(async (ws: string) => { setWeek(await api.week(ws)); }, []);
+  /** Marking a cell refreshes the grid only — the reflection may be mid-sentence. */
+  const refresh = useCallback(async (ws: string) => { setWeek(await api.week(ws)); }, []);
+
+  const load = useCallback(async (ws: string) => {
+    const v = await api.week(ws);
+    setWeek(v);
+    reviewFor.current = ws;
+    setReview(v.review);
+  }, []);
 
   useEffect(() => { void load(weekStart); }, [weekStart, load]);
   useEffect(() => { setWeekStart(mondayOf(date)); }, [date]);
+
+  useDebouncedSave(review, async (v) => {
+    if (reviewFor.current !== weekStart) return;
+    return api.saveWeek(weekStart, v);
+  });
 
   if (!week) return null;
 
@@ -35,7 +50,7 @@ export default function Week({
         !confirm(`Clear the reason you wrote?\n\n“${reason}”`)) return;
     // A cell going broken needs its reason, and that conversation belongs on
     // the day itself rather than in a cramped grid.
-    if (await track(api.mark(d, standardId, next, ''))) void load(weekStart);
+    if (await track(api.mark(d, standardId, next, ''))) void refresh(weekStart);
   };
 
   return (
@@ -104,6 +119,19 @@ export default function Week({
         filled — kept &nbsp;·&nbsp; struck — broken &nbsp;·&nbsp; dot — released &nbsp;·&nbsp;
         double-click a day to open it
       </p>
+
+      <section className="panel">
+        <h2>The week</h2>
+        <p className="prompt">
+          What happened this week, and what are you carrying into the next?
+        </p>
+        <textarea
+          value={review}
+          onChange={(e) => setReview(e.target.value)}
+          placeholder="Room to say more than a grid can hold — why it went the way it went, what was going on around it, and what you want to do about it."
+          style={{ minHeight: 260 }}
+        />
+      </section>
     </>
   );
 }

@@ -14,11 +14,14 @@ export default function Trends() {
   const [days, setDays] = useState(90);
   const [view, setView] = useState<TrendsView | null>(null);
   const [open, setOpen] = useState<number | null>(null);
+  const [reviews, setReviews] = useState<{ weekStart: string; review: string }[]>([]);
 
   useEffect(() => {
     const to = toISO(new Date());
     void api.trends(addDays(to, -(days - 1)), to).then(setView);
   }, [days]);
+
+  useEffect(() => { void api.reviews().then(setReviews); }, []);
 
   if (!view) return null;
 
@@ -61,8 +64,21 @@ export default function Trends() {
               onToggle={() => setOpen(open === s.lineageId ? null : s.lineageId)}
             />
           ))}
-
         </>
+      )}
+
+      {reviews.length > 0 && (
+        <section className="panel">
+          <h2>What you wrote about the weeks</h2>
+          {reviews.map((r) => (
+            <div className="past-review" key={r.weekStart}>
+              <div className="reason-date">week of {shortDate(r.weekStart)}</div>
+              {r.review.split('\n').filter(Boolean).map((line, i) => (
+                <p className="reason-text" key={i}>{line}</p>
+              ))}
+            </div>
+          ))}
+        </section>
       )}
     </>
   );

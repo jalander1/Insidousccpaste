@@ -1,10 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openDatabase, type DB } from './db.js';
 import * as store from './store.js';
-import * as reflect from './reflect.js';
 import { addDays, mondayOf, toISO, trackingDate } from '../../shared/dates.js';
 
 export interface ServerOptions {
@@ -70,6 +68,14 @@ export function createApp(db: DB, opts: ServerOptions) {
   app.get('/api/week/:weekStart', wrap((req) =>
     store.getWeek(db, mondayOf(req.params.weekStart))));
 
+  app.put('/api/week/:weekStart', wrap((req) => {
+    const ws = mondayOf(req.params.weekStart);
+    store.setWeekReview(db, ws, String(req.body?.review ?? ''));
+    return store.getWeek(db, ws);
+  }));
+
+  app.get('/api/reviews', wrap(() => store.listReviews(db)));
+
   // ------------------------------------------------------------- standards
   app.get('/api/standards', wrap(() => store.currentStandards(db)));
   app.post('/api/standards', wrap((req) => store.createStandard(db, req.body)));
@@ -96,103 +102,6 @@ export function createApp(db: DB, opts: ServerOptions) {
     store.clearExemption(db, date, Number(lineageId));
     return store.getDay(db, date);
   }));
-
-  // --------------------------------------------------------------- reflect
-  app.get('/api/chat/:date', wrap((req) => ({
-    messages: reflect.getChat(db, req.params.date),
-    key: reflect.apiKeyStatus(db),
-  })));
-
-  app.delete('/api/chat/:date', wrap((req) => {
-    reflect.clearChat(db, req.params.date);
-    return { ok: true };
-  }));
-
-  app.get('/api/chat-dates', wrap(() => reflect.chatDates(db)));
-
-  app.get('/api/api-key', wrap(() => reflect.apiKeyStatus(db)));
-  app.put('/api/api-key', wrap((req) => {
-    reflect.setSetting(db, 'anthropic_api_key', String(req.body?.key ?? '').trim());
-    return reflect.apiKeyStatus(db);
-  }));
-
-  /**
-   * Streams a reply over SSE so a long answer arrives a sentence at a time
-   * rather than after a silent minute. The key never leaves this process.
-   */
-  app.post('/api/chat/:date', async (req, res) => {
-    const date = req.params.date;
-    const message = String(req.body?.message ?? '').trim();
-    const apiKey = reflect.getSetting(db, 'anthropic_api_key');
-
-    if (!apiKey) {
-      res.status(400).json({ error: 'No API key set. Add one under Manage.' });
-      return;
-    }
-    if (!message) {
-      res.status(400).json({ error: 'Nothing to send.' });
-      return;
-    }
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    const send = (event: string, data: unknown) =>
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-
-    try {
-      // Nothing is written until there is an answer to write beside it — a
-      // failed call must not leave his message stranded without a reply.
-      const history = reflect.getChat(db, date);
-
-      const client = new Anthropic({ apiKey });
-      let answer = '';
-
-      const stream = client.beta.messages.stream({
-        model: reflect.MODEL,
-        max_tokens: 1500,
-        // The record is stable within a conversation, so cache it and pay for
-        // those tokens once rather than on every turn.
-        system: [{
-          type: 'text',
-          text: `${reflect.SYSTEM_PROMPT}\n\n# His record\n\n${reflect.buildContext(db, date)}`,
-          cache_control: { type: 'ephemeral' },
-        }],
-        output_config: { effort: 'medium' },
-        betas: ['server-side-fallback-2026-06-01'],
-        fallbacks: [{ model: 'claude-opus-4-8' }],
-        messages: [...history, { role: 'user', content: message }],
-      });
-
-      for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          answer += event.delta.text;
-          send('delta', { text: event.delta.text });
-        }
-      }
-
-      const final = await stream.finalMessage();
-      if (final.stop_reason === 'refusal') {
-        send('error', {
-          message: 'Claude declined to answer that one. Try putting it another way.',
-        });
-      } else if (answer.trim()) {
-        reflect.appendChat(db, date, 'user', message);
-        reflect.appendChat(db, date, 'assistant', answer);
-      }
-      send('done', { ok: true });
-    } catch (err: any) {
-      console.error(err);
-      const status = err?.status;
-      send('error', {
-        message: status === 401 ? 'That API key was rejected. Check it under Manage.'
-          : status === 429 ? 'Rate limited. Wait a moment and try again.'
-          : String(err?.message ?? err),
-      });
-    } finally {
-      res.end();
-    }
-  });
 
   // ---------------------------------------------------------------- trends
   app.get('/api/trends', wrap((req) => {

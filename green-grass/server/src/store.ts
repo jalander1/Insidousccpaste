@@ -251,12 +251,29 @@ export function getWeek(db: DB, weekStart: ISODate): WeekView {
       }),
     }));
 
+  const week = db.prepare('SELECT review FROM week WHERE week_start = ?')
+    .get(weekStart) as { review: string } | undefined;
+
   return {
     weekStart,
+    review: week?.review ?? '',
     days: perDate.map((d) => ({ date: d.date, isToday: d.date === today })),
     rows,
     tally: tally(rows.flatMap((r) => r.cells.map((c) => c.status))),
   };
+}
+
+/** The week's written reflection — the place for what a grid cannot hold. */
+export function setWeekReview(db: DB, weekStart: ISODate, review: string): void {
+  db.prepare('INSERT OR IGNORE INTO week (week_start) VALUES (?)').run(weekStart);
+  db.prepare('UPDATE week SET review = ? WHERE week_start = ?').run(review, weekStart);
+}
+
+/** Every week he has written something about, newest first. */
+export function listReviews(db: DB) {
+  return db.prepare(
+    `SELECT week_start AS weekStart, review FROM week
+      WHERE review <> '' ORDER BY week_start DESC`).all();
 }
 
 // ------------------------------------------------------------------- trends

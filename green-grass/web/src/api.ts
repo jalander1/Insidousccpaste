@@ -28,6 +28,9 @@ export const api = {
     put<DayView>(`/api/step/${date}/${stepId}`, { checked }),
 
   week: (weekStart: string) => req<WeekView>(`/api/week/${weekStart}`),
+  saveWeek: (weekStart: string, review: string) =>
+    put<WeekView>(`/api/week/${weekStart}`, { review }),
+  reviews: () => req<{ weekStart: string; review: string }[]>('/api/reviews'),
 
   standards: () => req<StandardVersion[]>('/api/standards'),
   createStandard: (f: Record<string, unknown>) => post<StandardVersion>('/api/standards', f),
@@ -49,54 +52,6 @@ export const api = {
     }),
 
   trends: (from: string, to: string) => req<TrendsView>(`/api/trends?from=${from}&to=${to}`),
-
-  chat: (date: string) => req<{
-    messages: { role: 'user' | 'assistant'; content: string }[];
-    key: { configured: boolean; hint: string | null };
-  }>(`/api/chat/${date}`),
-  clearChat: (date: string) =>
-    req<{ ok: boolean }>(`/api/chat/${date}`, { method: 'DELETE' }),
-  chatDates: () => req<{ date: string; messages: number }[]>('/api/chat-dates'),
-
-  apiKey: () => req<{ configured: boolean; hint: string | null }>('/api/api-key'),
-  setApiKey: (key: string) =>
-    put<{ configured: boolean; hint: string | null }>('/api/api-key', { key }),
-
-  /** Streams a reply, calling onText for each fragment as it arrives. */
-  async send(
-    date: string, message: string,
-    onText: (t: string) => void,
-  ): Promise<{ error?: string }> {
-    const res = await fetch(`/api/chat/${date}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
-    });
-    if (!res.ok || !res.body) {
-      const body = await res.json().catch(() => ({ error: res.statusText }));
-      return { error: body.error ?? 'Could not reach Claude.' };
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let error: string | undefined;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const chunks = buffer.split('\n\n');
-      buffer = chunks.pop() ?? '';
-      for (const chunk of chunks) {
-        const event = /^event: (.+)$/m.exec(chunk)?.[1];
-        const raw = /^data: (.+)$/m.exec(chunk)?.[1];
-        if (!event || !raw) continue;
-        const data = JSON.parse(raw);
-        if (event === 'delta') onText(data.text);
-        else if (event === 'error') error = data.message;
-      }
-    }
-    return { error };
-  },
 
   dataLocation: () =>
     req<{ dbPath: string; backups: string; canReveal: boolean }>('/api/data-location'),

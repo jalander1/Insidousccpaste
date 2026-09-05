@@ -253,6 +253,24 @@ test('trends count the reasons and find the step that slips', () => {
   db.close();
 });
 
+test('the week holds a written reflection, kept per week', () => {
+  const { db } = tempDb();
+  const words = 'Fell off badly — moving flat and it swallowed the week. '
+    + 'Back to it from Monday, starting with the wake-up.';
+  store.setWeekReview(db, MON, words);
+
+  assert.equal(store.getWeek(db, MON).review, words);
+  assert.equal(store.getWeek(db, '2026-08-31').review, '', 'the next week is its own page');
+
+  // It survives a restart, and shows up in the collected list.
+  const reviews = store.listReviews(db) as { weekStart: string; review: string }[];
+  assert.deepEqual(reviews, [{ weekStart: MON, review: words }]);
+
+  store.setWeekReview(db, MON, '');
+  assert.equal((store.listReviews(db) as any[]).length, 0, 'emptied reflections drop out');
+  db.close();
+});
+
 test('the CSV export writes one honest row per standard per day', () => {
   const { db } = tempDb();
   const wake = store.currentStandards(db)[0];

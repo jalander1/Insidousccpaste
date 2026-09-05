@@ -56,6 +56,8 @@ export interface DayView {
 
 export interface WeekView {
   weekStart: ISODate;
+  /** What he wrote about the week as a whole. */
+  review: string;
   days: { date: ISODate; isToday: boolean }[];
   rows: {
     lineageId: number;
