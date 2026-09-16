@@ -69,6 +69,8 @@ export interface WeekView {
   review: string;
   points: number;
   lastWeekPoints: number;
+  /** True while the week is still running — both totals are to the same day. */
+  partial: boolean;
   days: { date: ISODate; isToday: boolean }[];
   rows: {
     lineageId: number;

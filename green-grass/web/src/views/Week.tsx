@@ -115,7 +115,9 @@ export default function Week({
           <span className="score-of">points this week</span>
         </div>
         <div className="week-rival">
-          <span>last week <b>{week.lastWeekPoints}</b></span>
+          <span>
+            last week{week.partial ? ' to here' : ''} <b>{week.lastWeekPoints}</b>
+          </span>
           {week.lastWeekPoints > 0 && (
             <span className={`verdict ${week.points > week.lastWeekPoints ? 'won'
               : week.points === week.lastWeekPoints ? 'held' : 'lost'}`}>

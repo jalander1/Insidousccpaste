@@ -159,8 +159,12 @@ export function setOnePercent(
 }
 
 export function scoreFor(db: DB, date: ISODate, today = toISO(new Date())): DayScore {
+  // An exemption lowers what the day could have scored, so a day carrying one
+  // would lose the contest for having been released from a rule. It sits the
+  // contest out instead, exactly as Sunday does.
+  const exempted = exemptionsFor(db, date).size > 0;
   return scoreDay(date, statusesOn(db, date), getObjectives(db, date),
-    getOnePercent(db, date), date < today);
+    getOnePercent(db, date), date < today, exempted);
 }
 
 /** Scores across a span, oldest first — what the verdicts and runs are read from. */
@@ -206,12 +210,14 @@ export function getDay(db: DB, date: ISODate): DayView {
     };
   });
 
-  const history = scoresBetween(db, addDays(date, -21), date);
+  // Wide enough that a long run is never truncated by the window it is read from.
+  const history = scoresBetween(db, addDays(date, -180), date);
   const score = history[history.length - 1];
   const rival = rivalOf(history, date);
 
   // Days behind him with nothing on them at all — the ones worth going back for.
   const unfilled = history
+    .filter((s) => s.date >= addDays(date, -21))
     .filter((s) => s.date < date && s.asked > 0 && s.kept === 0 && s.points === 0)
     .filter((s) => !db.prepare('SELECT 1 FROM mark WHERE date = ? LIMIT 1').get(s.date))
     .map((s) => s.date)
@@ -345,9 +351,7 @@ export function getWeek(db: DB, weekStart: ISODate): WeekView {
   return {
     weekStart,
     review: week?.review ?? '',
-    points: weekPoints(scoresBetween(db, weekStart, addDays(weekStart, 6))),
-    lastWeekPoints: weekPoints(
-      scoresBetween(db, addDays(weekStart, -7), addDays(weekStart, -1))),
+    ...weekRace(db, weekStart),
     days: perDate.map((d) => ({ date: d.date, isToday: d.date === today })),
     rows,
     tally: tally(rows.flatMap((r) => r.cells.map((c) => c.status))),
@@ -365,6 +369,23 @@ export function listReviews(db: DB) {
   return db.prepare(
     `SELECT week_start AS weekStart, review FROM week
       WHERE review <> '' ORDER BY week_start DESC`).all();
+}
+
+/**
+ * A week in progress is compared like for like: this week so far against last
+ * week to the same point. Racing four days against a finished seven would read
+ * as hopelessly behind every Monday.
+ */
+function weekRace(db: DB, weekStart: ISODate) {
+  const today = toISO(new Date());
+  const current = today >= weekStart && today <= addDays(weekStart, 6);
+  const through = current ? weekdayIndex(today) : 6;
+  return {
+    points: weekPoints(scoresBetween(db, weekStart, addDays(weekStart, through))),
+    lastWeekPoints: weekPoints(
+      scoresBetween(db, addDays(weekStart, -7), addDays(weekStart, through - 7))),
+    partial: current,
+  };
 }
 
 // ------------------------------------------------------------------- trends
