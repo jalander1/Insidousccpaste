@@ -327,3 +327,24 @@ test('a lineage can only ever have one version in force', () => {
     store.currentStandards(db).filter((s) => s.lineageId === primary.lineageId).length, 1,
   );
 });
+
+test('retiring a standard takes nothing else with it', () => {
+  const { db } = tempDb();
+  const before = store.currentStandards(db);
+  const sugar = store.createStandard(db, { name: 'No refined sugar or takeaway at all' });
+
+  // The bug this guards: retire closed every live version on the lineage, and
+  // a standard added by hand used to share its lineage with an objective — so
+  // retiring the standard silently retired the objective beside it.
+  store.retireStandard(db, sugar.lineageId);
+
+  const after = store.currentStandards(db);
+  assert.equal(after.length, before.length, 'only the one standard goes');
+  for (const name of ['Primary objective', 'Secondary objective', 'Tertiary objective']) {
+    assert.ok(after.some((s) => s.name === name), `${name} survives`);
+  }
+  assert.ok(!after.some((s) => s.name === sugar.name), 'the retired one is gone');
+
+  // And it is only closed, never deleted: the record it carries is still there.
+  assert.ok(store.allVersions(db).some((v) => v.lineageId === sugar.lineageId));
+});
