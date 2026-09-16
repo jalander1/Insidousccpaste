@@ -41,7 +41,9 @@ export default function Manage() {
       </p>
 
       {standards.map((s, i) => (
-        <div className="manage-item" key={s.lineageId}>
+        // Keyed by the version row, not the lineage: two live rows on one
+        // lineage used to collide here and take the list apart.
+        <div className="manage-item" key={s.id}>
           {editing === s.lineageId ? (
             <Editor
               initial={{
@@ -297,7 +299,7 @@ function Exemptions({ standards }: { standards: StandardVersion[] }) {
         >
           <option value="">Which standard…</option>
           {standards.map((s) => (
-            <option key={s.lineageId} value={s.lineageId}>{s.name}</option>
+            <option key={s.id} value={s.lineageId}>{s.name}</option>
           ))}
         </select>
       </div>

@@ -42,7 +42,7 @@ export default function Today({
 
       <div className="ledger">
         {day.cells.map((cell, i) => (
-          <Entry key={cell.lineageId} cell={cell} index={i + 1} date={date} onChange={apply} />
+          <Entry key={cell.standardId} cell={cell} index={i + 1} date={date} onChange={apply} />
         ))}
         <OnePercentRow day={day} date={date} onChange={apply} />
       </div>
@@ -63,7 +63,7 @@ export default function Today({
       <details className="defs">
         <summary>The definitions</summary>
         {day.cells.map((c, i) => (
-          <div className="def" key={c.lineageId}>
+          <div className="def" key={c.standardId}>
             <span className="n">{String(i + 1).padStart(2, '0')}</span>
             <div className="t">{c.name}</div>
             {c.definition && <div className="d">{c.definition}</div>}
