@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { addDays, longDate, shortDate, toISO } from '../../../shared/dates.js';
+import { Failed, useLoader } from '../load.js';
 import type { TrendStandard, TrendsView } from '../../../shared/types.js';
 
 const RANGES = [
@@ -16,13 +17,15 @@ export default function Trends() {
   const [open, setOpen] = useState<number | null>(null);
   const [reviews, setReviews] = useState<{ weekStart: string; review: string }[]>([]);
 
-  useEffect(() => {
+  const { error, retry } = useLoader(() => {
     const to = toISO(new Date());
-    void api.trends(addDays(to, -(days - 1)), to).then(setView);
+    return Promise.all([
+      api.trends(addDays(to, -(days - 1)), to).then(setView),
+      api.reviews().then(setReviews),
+    ]);
   }, [days]);
 
-  useEffect(() => { void api.reviews().then(setReviews); }, []);
-
+  if (error) return <Failed error={error} retry={retry} />;
   if (!view) return null;
 
   // The wake-up is the standard everything else hangs off, so it leads.

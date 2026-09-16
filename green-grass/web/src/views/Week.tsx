@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { track, useDebouncedSave } from '../save.js';
+import { Failed, useLoader } from '../load.js';
 import { addDays, DOW_LETTER, fromISO, longDate, mondayOf, shortDate, toISO }
   from '../../../shared/dates.js';
 import type { CellStatus, WeekView } from '../../../shared/types.js';
@@ -27,7 +28,7 @@ export default function Week({
     setReview(v.review);
   }, []);
 
-  useEffect(() => { void load(weekStart); }, [weekStart, load]);
+  const { error, retry } = useLoader(() => load(weekStart), [weekStart]);
   useEffect(() => { setWeekStart(mondayOf(date)); }, [date]);
 
   useDebouncedSave(review, async (v) => {
@@ -35,6 +36,7 @@ export default function Week({
     return api.saveWeek(weekStart, v);
   });
 
+  if (error) return <Failed error={error} retry={retry} />;
   if (!week) return null;
 
   const isThisWeek = mondayOf(toISO(new Date())) === weekStart;

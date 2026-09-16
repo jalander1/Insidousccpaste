@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, Menu, dialog, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { startServer } from '../server/src/server.js';
@@ -93,6 +93,23 @@ app.on('second-instance', () => {
   if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
 });
 
+/**
+ * If the record cannot be opened there is no window to show the error in, and
+ * an app that dies silently at launch just bounces once in the dock. Say what
+ * went wrong and where the data lives, so it can be recovered by hand.
+ */
+function bootFailed(err: unknown): void {
+  const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+  console.error('Green Grass could not start:', detail);
+  try {
+    dialog.showErrorBox(
+      'Green Grass could not start',
+      `${detail}\n\nYour record is still here:\n${app.getPath('userData')}`,
+    );
+  } catch { /* nothing left to try */ }
+  app.exit(1);
+}
+
 app.whenReady().then(() => {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { role: 'appMenu' },
@@ -117,11 +134,11 @@ app.whenReady().then(() => {
       }],
     },
   ]));
-  void boot();
+  boot().catch(bootFailed);
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) void boot();
+  if (BrowserWindow.getAllWindows().length === 0) boot().catch(bootFailed);
 });
 
 // On macOS ⌘Q quits properly rather than leaving the process behind.

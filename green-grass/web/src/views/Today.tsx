@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { track, useDebouncedSave } from '../save.js';
+import { Failed, useLoader } from '../load.js';
 import { addDays, longDate, shortDate, toISO, trackingDate }
   from '../../../shared/dates.js';
 import type { CellStatus, DayCell, DayView } from '../../../shared/types.js';
@@ -11,8 +12,9 @@ export default function Today({
   const [day, setDay] = useState<DayView | null>(null);
 
   const load = useCallback(async (d: string) => { setDay(await api.day(d)); }, []);
-  useEffect(() => { void load(date); }, [date, load]);
+  const { error, retry } = useLoader(() => load(date), [date]);
 
+  if (error) return <Failed error={error} retry={retry} />;
   if (!day) return null;
 
   const today = toISO(new Date());

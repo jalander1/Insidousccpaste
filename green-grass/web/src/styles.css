@@ -549,3 +549,13 @@ details.defs[open] summary::before { content: '– '; }
   font-family: var(--serif); font-size: 14px; font-weight: 300;
   color: var(--dimmer); font-style: italic; margin: 12px 0 0;
 }
+
+/* A failure is shown where the content would have been, in the app's own voice. */
+.failed {
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--brass-lo);
+  background: var(--panel-2);
+  padding: 18px 20px;
+  margin-top: 18px;
+}
+.failed .serif { font-family: var(--serif); color: var(--bone); margin: 6px 0 14px; }

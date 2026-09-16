@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { track } from '../save.js';
+import { Failed, useLoader } from '../load.js';
 import { DOW_LETTER, longDate, toISO, trackingDate } from '../../../shared/dates.js';
 import type { RoutineStep, StandardVersion } from '../../../shared/types.js';
 
@@ -15,7 +16,9 @@ export default function Manage() {
   const [adding, setAdding] = useState(false);
 
   const load = useCallback(() => api.standards().then(setStandards), []);
-  useEffect(() => { void load(); }, [load]);
+  const { error, retry } = useLoader(load, []);
+
+  if (error) return <Failed error={error} retry={retry} />;
 
   const move = async (i: number, dir: -1 | 1) => {
     const next = [...standards];
