@@ -225,15 +225,6 @@ export function getDay(db: DB, date: ISODate): DayView {
 
   const comparison = compareAgainstRival(db, date, history);
 
-  // Days behind him with nothing on them at all — the ones worth going back for.
-  const unfilled = history
-    .filter((s) => s.date >= addDays(date, -21))
-    .filter((s) => s.date < date && s.asked > 0 && s.kept === 0 && s.points === 0)
-    .filter((s) => !db.prepare('SELECT 1 FROM mark WHERE date = ? LIMIT 1').get(s.date))
-    .map((s) => s.date)
-    .reverse()
-    .slice(0, 3);
-
   return {
     date,
     cells,
@@ -248,7 +239,6 @@ export function getDay(db: DB, date: ISODate): DayView {
     score,
     comparison,
     run: runOfDays(db, history),
-    unfilled,
   };
 }
 

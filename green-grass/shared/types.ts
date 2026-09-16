@@ -65,8 +65,6 @@ export interface DayView {
   score: DayScore;
   comparison: DayComparison;
   run: number;
-  /** Past days with nothing recorded, newest first — the ones to go back for. */
-  unfilled: ISODate[];
 }
 
 export interface WeekView {

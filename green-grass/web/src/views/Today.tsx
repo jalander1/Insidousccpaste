@@ -20,11 +20,6 @@ export default function Today({
   const apply = (v: DayView | undefined) => { if (v) setDay(v); };
   const c = day.comparison;
 
-  const standing = c.verdict === 'won' ? 'Up on yesterday'
-    : c.verdict === 'held' ? 'Level with yesterday'
-    : c.verdict === 'lost' ? 'Down on yesterday'
-    : !day.score.competes ? 'Sunday — no contest'
-    : c.rival ? 'Against yesterday' : 'Nothing behind this one yet';
 
   return (
     <>
@@ -43,45 +38,23 @@ export default function Today({
         )}
       </div>
 
-      <div className="standing">
-        <span className={`standing-word ${c.verdict ?? 'open'}`}>{standing}</span>
-        {c.rival && (
-          <span className="standing-tally">
-            {c.gained.length} up · {c.dropped.length} down
-            {c.verdict === null && ' · still running'}
-          </span>
-        )}
-        {day.run > 0 && (
-          <span className="run">
-            held or better · {day.run} day{day.run === 1 ? '' : 's'}
-          </span>
-        )}
-      </div>
-
-      {day.unfilled.length > 0 && (
-        <p className="nudge">
-          Nothing recorded for{' '}
-          {day.unfilled.map((d, i) => (
-            <span key={d}>
-              {i > 0 && (i === day.unfilled.length - 1 ? ' and ' : ', ')}
-              <button className="linkish" onClick={() => setDate(d)}>{shortDate(d)}</button>
-            </span>
-          ))}
-          . A blank day is a lost one — go back and fill them in.
-        </p>
-      )}
-
       <div className="ledger">
         {day.cells.map((cell, i) => (
           <Entry key={cell.lineageId} cell={cell} index={i + 1} date={date} onChange={apply} />
         ))}
-        <OnePercentRow
-          day={day}
-          index={day.cells.length + 1}
-          date={date}
-          onChange={apply}
-        />
+        <OnePercentRow day={day} date={date} onChange={apply} />
       </div>
+
+      {c.verdict && (
+        <p className={`standing ${c.verdict}`}>
+          {c.verdict === 'won' ? 'Up on yesterday'
+            : c.verdict === 'held' ? 'Level with yesterday'
+            : 'Down on yesterday'}
+          {(c.gained.length > 0 || c.dropped.length > 0) &&
+            ` · ${c.gained.length} up, ${c.dropped.length} down`}
+          {day.run > 0 && ` · ${day.run} day${day.run === 1 ? '' : 's'} held or better`}
+        </p>
+      )}
 
       <Tomorrow date={date} initial={day.tomorrowOnePercent} />
 
@@ -109,11 +82,8 @@ function Yesterday({ status }: { status: CellStatus | null }) {
 
 /** The 1%: written the night before, ticked that day, gone after it. */
 function OnePercentRow({
-  day, index, date, onChange,
-}: {
-  day: DayView; index: number; date: string;
-  onChange: (v: DayView | undefined) => void;
-}) {
+  day, date, onChange,
+}: { day: DayView; date: string; onChange: (v: DayView | undefined) => void }) {
   const { onePercent } = day;
   const [text, setText] = useState(onePercent.text);
   const unsaved = useRef(false);
@@ -135,7 +105,7 @@ function OnePercentRow({
     <div className="entry">
       <div className="entry-main">
         <div className="entry-body">
-          <div className="entry-num">{String(index).padStart(2, '0')} · the 1%</div>
+          <div className="entry-num">the 1%</div>
           {onePercent.text.trim() ? (
             <div className="entry-name">{onePercent.text}</div>
           ) : (

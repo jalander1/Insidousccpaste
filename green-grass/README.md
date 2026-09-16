@@ -98,9 +98,10 @@ not evidence.
 ### The day: against yesterday, on every row
 
 Each row carries what yesterday did with it — *yesterday · kept*, *yesterday ·
-broken* — so the comparison sits where the decision is made rather than in a
-panel above it. One quiet line at the top says where the day stands overall and
-how long the run is.
+broken* — so the comparison sits where the decision is made. Once the day is
+filled in, one line beneath the ledger says where it landed and how long the
+run is. Nothing appears there while the day is still running: a verdict on a
+day that has not happened yet is worth nothing.
 
 More lines up than down and you won; more down and you lost; **equal and you
 held**, which keeps the run alive. Holding has to count: once you are running
@@ -109,8 +110,7 @@ clean there is nothing left to beat.
 Only rows both days actually asked for are compared, so a released standard can
 neither cost you nor flatter you. **A day that put nothing on the board is a
 loss**, whatever it is compared against — you can go back and fill a day in
-whenever you like, and Today points at any blank days behind you, but a day
-left blank stays lost. **Sunday does not race**; the run steps over it and
+whenever you like, but a day left blank stays lost. **Sunday does not race**; the run steps over it and
 Monday takes on the Saturday.
 
 ### Objectives and the 1%
