@@ -95,6 +95,50 @@ routine. A released day never breaks a streak and never counts against a
 percentage. An unanswered day is not counted as a failure either — it is simply
 not evidence.
 
+### The score, and the rival
+
+Every day is scored, and the rival is yesterday.
+
+| | |
+|---|---|
+| Each standard kept | 10 |
+| Primary objective | 20 |
+| Secondary objective | 12 |
+| Tertiary objective | 8 |
+| The 1% | 10 |
+
+Standards are the floor, so they are priced as one. The objectives are the
+tasks you set yourself, and they are priced above a standard because they are
+what actually moves you forward. A clean weekday is 90; everything on top of it
+is 140.
+
+Beat yesterday and you won; match it and you **held**, which keeps your run
+alive. Only going backwards breaks it — because once you are running clean,
+"beat yesterday" is impossible on standards alone, and the objectives are how
+you get past a day you could not otherwise beat.
+
+**A day you never fill in scores zero, which is a loss and breaks the run.**
+That is the deal: you can go back and fill a day in whenever you like, and
+Today will point at any blank days behind you, but a day left blank stays lost.
+
+**Sunday scores but does not race.** It only asks five things, so it cannot
+fairly take on a weekday, and it is the day of rest. Your run steps straight
+over it; Monday takes on the Saturday.
+
+The week is the sum of its days, set against last week's total.
+
+### Objectives and the 1%
+
+Two different things, deliberately.
+
+**Objectives** are the day's tasks — the ones you write in your notepad.
+Primary, secondary, tertiary, in that order of weight. Write the short version
+in, tap hit or missed. Set tomorrow's from the bottom of Today, which is what
+"plan and reflect on the day" in your evening routine is for.
+
+**The 1%** is not a task. It is the one thing you are doing better than
+yesterday, and it gets its own line and its own ten points.
+
 ### Why it broke
 
 Marking something broken opens a one-line "why". That text is the point of the

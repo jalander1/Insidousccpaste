@@ -5,6 +5,10 @@ import {
 } from '../../shared/dates.js';
 import { checklistComplete, resolveCell, stepApplies } from '../../shared/resolve.js';
 import { computeStreaks, keptPercent, tally } from '../../shared/streaks.js';
+import {
+  currentRun, rivalOf, scoreDay, TIERS, verdictFor, weekPoints,
+  type DayScore, type ObjectiveStatus, type ScoredObjective, type Tier,
+} from '../../shared/score.js';
 import type {
   CellStatus, DayCell, DayView, Kind, RoutineStep, StandardVersion,
   TrendStandard, TrendsView, WeekView,
@@ -103,6 +107,68 @@ function exemptionsFor(db: DB, date: ISODate): Map<number, string> {
   return new Map(rows.map((r) => [r.lineage_id, r.reason]));
 }
 
+export function getObjectives(db: DB, date: ISODate): ScoredObjective[] {
+  const rows = db.prepare('SELECT tier, text, status FROM objective WHERE date = ?')
+    .all(date) as ScoredObjective[];
+  // Always hand back all three slots, so the interface has somewhere to type.
+  return TIERS.map((tier) =>
+    rows.find((r) => r.tier === tier) ?? { tier, text: '', status: 'unset' as const });
+}
+
+export function setObjective(
+  db: DB, date: ISODate, tier: Tier,
+  fields: { text?: string; status?: 'unset' | 'hit' | 'missed' },
+): void {
+  ensureDay(db, date);
+  const current = getObjectives(db, date).find((o) => o.tier === tier)!;
+  const text = fields.text ?? current.text;
+  // An objective with nothing written in it cannot be hit or missed.
+  const status = !text.trim() ? 'unset' : (fields.status ?? current.status);
+  db.prepare(
+    `INSERT INTO objective (date, tier, text, status) VALUES (?, ?, ?, ?)
+     ON CONFLICT(date, tier) DO UPDATE SET text = excluded.text, status = excluded.status`,
+  ).run(date, tier, text, status);
+}
+
+/** The resolved statuses for one date, without building the whole view. */
+function statusesOn(db: DB, date: ISODate): CellStatus[] {
+  const exempt = exemptionsFor(db, date);
+  const marks = new Map<number, 'kept' | 'broken'>(
+    (db.prepare('SELECT standard_id, status FROM mark WHERE date = ?')
+      .all(date) as any[]).map((m) => [m.standard_id, m.status]),
+  );
+  return standardsAt(db, date)
+    .map((s) => resolveCell(s, date, exempt.has(s.lineageId), marks.get(s.id)));
+}
+
+export function getOnePercent(db: DB, date: ISODate): { text: string; status: ObjectiveStatus } {
+  const row = db.prepare('SELECT one_percent, one_percent_status FROM day WHERE date = ?')
+    .get(date) as { one_percent: string; one_percent_status: ObjectiveStatus } | undefined;
+  return { text: row?.one_percent ?? '', status: row?.one_percent_status ?? 'unset' };
+}
+
+export function setOnePercent(
+  db: DB, date: ISODate, fields: { text?: string; status?: ObjectiveStatus },
+): void {
+  ensureDay(db, date);
+  const current = getOnePercent(db, date);
+  const text = fields.text ?? current.text;
+  const status = !text.trim() ? 'unset' : (fields.status ?? current.status);
+  db.prepare('UPDATE day SET one_percent = ?, one_percent_status = ? WHERE date = ?')
+    .run(text, status, date);
+}
+
+export function scoreFor(db: DB, date: ISODate, today = toISO(new Date())): DayScore {
+  return scoreDay(date, statusesOn(db, date), getObjectives(db, date),
+    getOnePercent(db, date), date < today);
+}
+
+/** Scores across a span, oldest first — what the verdicts and runs are read from. */
+export function scoresBetween(db: DB, from: ISODate, to: ISODate): DayScore[] {
+  const today = toISO(new Date());
+  return rangeDates(from, to).map((d) => scoreFor(db, d, today));
+}
+
 export function getDay(db: DB, date: ISODate): DayView {
   const row = db.prepare('SELECT * FROM day WHERE date = ?').get(date) as
     { note: string } | undefined;
@@ -140,7 +206,29 @@ export function getDay(db: DB, date: ISODate): DayView {
     };
   });
 
-  return { date, note: row?.note ?? '', prompt: promptFor(date), cells };
+  const history = scoresBetween(db, addDays(date, -21), date);
+  const score = history[history.length - 1];
+  const rival = rivalOf(history, date);
+
+  // Days behind him with nothing on them at all — the ones worth going back for.
+  const unfilled = history
+    .filter((s) => s.date < date && s.asked > 0 && s.kept === 0 && s.points === 0)
+    .filter((s) => !db.prepare('SELECT 1 FROM mark WHERE date = ? LIMIT 1').get(s.date))
+    .map((s) => s.date)
+    .reverse()
+    .slice(0, 3);
+
+  return {
+    date,
+    cells,
+    objectives: getObjectives(db, date),
+    onePercent: getOnePercent(db, date),
+    score,
+    rival: rival ? { date: rival.date, points: rival.points } : null,
+    verdict: verdictFor(score, rival),
+    run: currentRun(history),
+    unfilled,
+  };
 }
 
 export function setDayFields(db: DB, date: ISODate, fields: { note?: string }): void {
@@ -257,6 +345,9 @@ export function getWeek(db: DB, weekStart: ISODate): WeekView {
   return {
     weekStart,
     review: week?.review ?? '',
+    points: weekPoints(scoresBetween(db, weekStart, addDays(weekStart, 6))),
+    lastWeekPoints: weekPoints(
+      scoresBetween(db, addDays(weekStart, -7), addDays(weekStart, -1))),
     days: perDate.map((d) => ({ date: d.date, isToday: d.date === today })),
     rows,
     tally: tally(rows.flatMap((r) => r.cells.map((c) => c.status))),

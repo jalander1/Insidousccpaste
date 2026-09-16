@@ -109,6 +109,25 @@ export default function Week({
         </tbody>
       </table>
 
+      <div className="weekscore">
+        <div>
+          <span className="score-points">{week.points}</span>
+          <span className="score-of">points this week</span>
+        </div>
+        <div className="week-rival">
+          <span>last week <b>{week.lastWeekPoints}</b></span>
+          {week.lastWeekPoints > 0 && (
+            <span className={`verdict ${week.points > week.lastWeekPoints ? 'won'
+              : week.points === week.lastWeekPoints ? 'held' : 'lost'}`}>
+              {week.points > week.lastWeekPoints
+                ? `ahead by ${week.points - week.lastWeekPoints}`
+                : week.points === week.lastWeekPoints ? 'level'
+                : `behind by ${week.lastWeekPoints - week.points}`}
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="tally">
         <span>kept <b>{week.tally.kept}</b></span>
         <span>broken <b>{week.tally.broken}</b></span>

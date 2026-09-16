@@ -1,4 +1,5 @@
 import type { ISODate } from './dates.js';
+import type { DayScore, ObjectiveStatus, ScoredObjective, Verdict } from './score.js';
 
 export type Kind = 'binary' | 'abstain' | 'checklist';
 
@@ -49,15 +50,25 @@ export interface DayCell {
 
 export interface DayView {
   date: ISODate;
-  note: string;
-  prompt: string;
   cells: DayCell[];
+  objectives: ScoredObjective[];
+  /** Separate from the objectives: the one thing being done better today. */
+  onePercent: { text: string; status: ObjectiveStatus };
+  score: DayScore;
+  /** Yesterday, or the Saturday before a Monday — the day being raced. */
+  rival: { date: ISODate; points: number } | null;
+  verdict: Verdict | null;
+  run: number;
+  /** Past days with nothing recorded, newest first — the ones to go back for. */
+  unfilled: ISODate[];
 }
 
 export interface WeekView {
   weekStart: ISODate;
   /** What he wrote about the week as a whole. */
   review: string;
+  points: number;
+  lastWeekPoints: number;
   days: { date: ISODate; isToday: boolean }[];
   rows: {
     lineageId: number;

@@ -65,6 +65,18 @@ export function createApp(db: DB, opts: ServerOptions) {
     return store.getDay(db, req.params.date);
   }));
 
+  app.put('/api/objective/:date/:tier', wrap((req) => {
+    store.setObjective(db, req.params.date, req.params.tier as any, req.body ?? {});
+    return store.getDay(db, req.params.date);
+  }));
+
+  app.get('/api/objectives/:date', wrap((req) => store.getObjectives(db, req.params.date)));
+
+  app.put('/api/one-percent/:date', wrap((req) => {
+    store.setOnePercent(db, req.params.date, req.body ?? {});
+    return store.getDay(db, req.params.date);
+  }));
+
   app.get('/api/week/:weekStart', wrap((req) =>
     store.getWeek(db, mondayOf(req.params.weekStart))));
 

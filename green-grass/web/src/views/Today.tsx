@@ -1,35 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { track, useDebouncedSave } from '../save.js';
-import { addDays, longDate, toISO, trackingDate } from '../../../shared/dates.js';
+import { addDays, longDate, shortDate, toISO, trackingDate }
+  from '../../../shared/dates.js';
+import { ONE_PERCENT_POINTS, TIER_POINTS, TIERS, type Tier }
+  from '../../../shared/score.js';
 import type { DayCell, DayView } from '../../../shared/types.js';
 
 export default function Today({
   date, setDate,
 }: { date: string; setDate: (d: string) => void }) {
   const [day, setDay] = useState<DayView | null>(null);
-  const [note, setNote] = useState('');
-  const noteFor = useRef<string>('');
 
-  const load = useCallback(async (d: string) => {
-    const v = await api.day(d);
-    setDay(v);
-    noteFor.current = d;
-    setNote(v.note);
-  }, []);
-
+  const load = useCallback(async (d: string) => { setDay(await api.day(d)); }, []);
   useEffect(() => { void load(date); }, [date, load]);
-
-  // Only save the note back to the day it was typed on.
-  useDebouncedSave(note, async (v) => {
-    if (noteFor.current !== date) return;
-    return api.saveDay(date, { note: v });
-  });
 
   if (!day) return null;
 
   const today = toISO(new Date());
   const isTracking = date === trackingDate();
+  const apply = (v: DayView | undefined) => { if (v) setDay(v); };
 
   return (
     <>
@@ -48,29 +38,29 @@ export default function Today({
         )}
       </div>
 
+      <Scoreline day={day} />
+
+      {day.unfilled.length > 0 && (
+        <p className="nudge">
+          Nothing recorded for{' '}
+          {day.unfilled.map((d, i) => (
+            <span key={d}>
+              {i > 0 && (i === day.unfilled.length - 1 ? ' and ' : ', ')}
+              <button className="linkish" onClick={() => setDate(d)}>{shortDate(d)}</button>
+            </span>
+          ))}
+          . A blank day is a lost one — go back and fill them in.
+        </p>
+      )}
+
       <div className="ledger">
         {day.cells.map((cell, i) => (
-          <Entry
-            key={cell.lineageId}
-            cell={cell}
-            index={i + 1}
-            date={date}
-            onChange={(v) => { if (v) setDay(v); }}
-          />
+          <Entry key={cell.lineageId} cell={cell} index={i + 1} date={date} onChange={apply} />
         ))}
       </div>
 
-      <section className="panel">
-        <p className="eyebrow">{longDate(date)}</p>
-        <h2>Looking back</h2>
-        <p className="prompt">{day.prompt}</p>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Write it plainly. Nobody else reads this."
-          style={{ minHeight: 130 }}
-        />
-      </section>
+      <Objectives day={day} date={date} onChange={apply} />
+      <OnePercent day={day} date={date} onChange={apply} />
 
       <details className="defs">
         <summary>The definitions</summary>
@@ -86,6 +76,226 @@ export default function Today({
   );
 }
 
+/** The day's standing: points, the day being raced, and the run at stake. */
+function Scoreline({ day }: { day: DayView }) {
+  const { score, rival, verdict, run } = day;
+  const word = verdict === 'won' ? 'beat' : verdict === 'held' ? 'held' : 'behind';
+
+  return (
+    <div className="scoreline">
+      <div className="score-main">
+        <span className="score-points">{score.points}</span>
+        <span className="score-of">
+          {score.kept} of {score.asked} kept
+          {score.objectivePoints > 0 && ` · +${score.objectivePoints} objectives`}
+          {score.onePercentPoints > 0 && ` · +${score.onePercentPoints} the 1%`}
+        </span>
+      </div>
+
+      <div className="score-side">
+        {!score.competes ? (
+          <span className="dimmed">Sunday — no contest</span>
+        ) : rival === null ? (
+          <span className="dimmed">no day behind this one yet</span>
+        ) : !score.settled ? (
+          <span className="dimmed">
+            {shortDate(rival.date)} scored <b>{rival.points}</b> · in progress
+          </span>
+        ) : (
+          <span className={`verdict ${verdict}`}>
+            {word} {shortDate(rival.date)} ({rival.points})
+          </span>
+        )}
+        {run > 0 && <span className="run">held or better · {run} days</span>}
+      </div>
+    </div>
+  );
+}
+
+/** What he set out to do today, from his notepad. Hit or missed, nothing more. */
+function Objectives({
+  day, date, onChange,
+}: { day: DayView; date: string; onChange: (v: DayView | undefined) => void }) {
+  const [tomorrow, setTomorrow] = useState(false);
+
+  return (
+    <section className="panel">
+      <h2>Objectives</h2>
+      <p className="serif muted" style={{ fontSize: 15, marginTop: 2 }}>
+        The tasks you set out for today.
+      </p>
+
+      {TIERS.map((tier) => (
+        <ObjectiveRow
+          key={tier}
+          tier={tier}
+          date={date}
+          value={day.objectives.find((o) => o.tier === tier)!}
+          onChange={onChange}
+        />
+      ))}
+
+      <div style={{ marginTop: 18, borderTop: '1px solid var(--rule)', paddingTop: 14 }}>
+        {tomorrow ? (
+          <TomorrowObjectives date={addDays(date, 1)} onDone={() => setTomorrow(false)} />
+        ) : (
+          <button className="mini" onClick={() => setTomorrow(true)}>
+            + set tomorrow's
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Not one of the tasks: the one thing being done better than yesterday. */
+function OnePercent({
+  day, date, onChange,
+}: { day: DayView; date: string; onChange: (v: DayView | undefined) => void }) {
+  const [text, setText] = useState(day.onePercent.text);
+  const unsaved = useRef(false);
+
+  useEffect(() => {
+    if (!unsaved.current) setText(day.onePercent.text);
+  }, [day.onePercent.text]);
+
+  useDebouncedSave(text, async (v) => {
+    if (v === day.onePercent.text) return;
+    const out = await api.onePercent(date, { text: v });
+    unsaved.current = false;
+    return out;
+  });
+
+  const set = async (status: 'hit' | 'missed') =>
+    onChange(await track(api.onePercent(date,
+      { status: day.onePercent.status === status ? 'unset' : status })));
+
+  return (
+    <section className="panel">
+      <h2>1% better</h2>
+      <p className="serif muted" style={{ fontSize: 15, marginTop: 2 }}>
+        One thing, done better than yesterday.
+      </p>
+      <div className="objective" style={{ marginTop: 14 }}>
+        <div className="obj-head">
+          <span className="obj-tier">the 1%</span>
+          <span className="obj-pts">{ONE_PERCENT_POINTS}</span>
+        </div>
+        <div className="obj-main">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => { unsaved.current = true; setText(e.target.value); }}
+            placeholder="Where you are being 1% better today"
+          />
+          {text.trim() && (
+            <div className="choice">
+              <button className={day.onePercent.status === 'hit' ? 'on-kept' : ''}
+                onClick={() => set('hit')}
+                aria-pressed={day.onePercent.status === 'hit'}>hit</button>
+              <button className={day.onePercent.status === 'missed' ? 'on-broken' : ''}
+                onClick={() => set('missed')}
+                aria-pressed={day.onePercent.status === 'missed'}>missed</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ObjectiveRow({
+  tier, date, value, onChange,
+}: {
+  tier: Tier; date: string;
+  value: { tier: string; text: string; status: string };
+  onChange: (v: DayView | undefined) => void;
+}) {
+  const [text, setText] = useState(value.text);
+  const unsaved = useRef(false);
+
+  useEffect(() => { if (!unsaved.current) setText(value.text); }, [value.text]);
+
+  useDebouncedSave(text, async (v) => {
+    if (v === value.text) return;
+    const out = await api.objective(date, tier, { text: v });
+    unsaved.current = false;
+    return out;
+  });
+
+  const set = async (status: 'hit' | 'missed') =>
+    onChange(await track(api.objective(date, tier,
+      { status: value.status === status ? 'unset' : status })));
+
+  return (
+    <div className="objective">
+      <div className="obj-head">
+        <span className="obj-tier">{tier}</span>
+        <span className="obj-pts">{TIER_POINTS[tier]}</span>
+      </div>
+      <div className="obj-main">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => { unsaved.current = true; setText(e.target.value); }}
+          placeholder={tier === 'primary' ? 'The one that matters most' : 'Optional'}
+        />
+        {text.trim() && (
+          <div className="choice">
+            <button className={value.status === 'hit' ? 'on-kept' : ''}
+              onClick={() => set('hit')} aria-pressed={value.status === 'hit'}>hit</button>
+            <button className={value.status === 'missed' ? 'on-broken' : ''}
+              onClick={() => set('missed')} aria-pressed={value.status === 'missed'}>missed</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Written during the evening routine, while he is already sitting there. */
+function TomorrowObjectives({ date, onDone }: { date: string; onDone: () => void }) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    void api.objectives(date).then((rows) => {
+      setValues(Object.fromEntries(rows.map((r) => [r.tier, r.text])));
+      setLoaded(true);
+    });
+  }, [date]);
+
+  useDebouncedSave(values, async (v) => {
+    if (!loaded) return;
+    for (const tier of TIERS) {
+      if (v[tier] !== undefined) await api.objective(date, tier, { text: v[tier] });
+    }
+  });
+
+  if (!loaded) return null;
+
+  return (
+    <div>
+      <p className="lead">Tomorrow — {longDate(date)}</p>
+      {TIERS.map((tier) => (
+        <div className="objective" key={tier}>
+          <div className="obj-head">
+            <span className="obj-tier">{tier}</span>
+            <span className="obj-pts">{TIER_POINTS[tier]}</span>
+          </div>
+          <input
+            type="text"
+            value={values[tier] ?? ''}
+            onChange={(e) => setValues({ ...values, [tier]: e.target.value })}
+            placeholder={tier === 'primary' ? 'The one that matters most' : 'Optional'}
+          />
+        </div>
+      ))}
+      <button className="mini" onClick={onDone} style={{ marginTop: 10 }}>done</button>
+    </div>
+  );
+}
+
 function Entry({
   cell, index, date, onChange,
 }: {
@@ -95,15 +305,10 @@ function Entry({
   const [reason, setReason] = useState(cell.reason);
   const [askReason, setAskReason] = useState(false);
   const released = cell.status === 'released';
-  // Marking any other standard refetches the whole day, which would otherwise
-  // overwrite a reason still being typed with the empty one on the server.
   const unsaved = useRef(false);
 
-  useEffect(() => {
-    if (!unsaved.current) setReason(cell.reason);
-  }, [cell.reason]);
+  useEffect(() => { if (!unsaved.current) setReason(cell.reason); }, [cell.reason]);
 
-  // The "why" is the point of tracking at all — capture it while it is fresh.
   useDebouncedSave(reason, async (v) => {
     if (cell.status !== 'broken' || v === cell.reason) return;
     const out = await api.mark(date, cell.standardId, 'broken', v);
@@ -113,7 +318,6 @@ function Entry({
 
   const set = async (status: 'kept' | 'broken') => {
     const next = cell.status === status ? 'unanswered' : status;
-    // Never discard a written reason to a stray click.
     if (next !== 'broken' && reason.trim() &&
         !confirm(`Clear the reason you wrote for "${cell.name}"?\n\n“${reason}”`)) return;
     setAskReason(next === 'broken');
@@ -132,9 +336,7 @@ function Entry({
           <div className="entry-name">{cell.name}</div>
           {released ? (
             <div className="entry-released-note">
-              {cell.exemptReason
-                ? `Released — ${cell.exemptReason}`
-                : 'Released today.'}
+              {cell.exemptReason ? `Released — ${cell.exemptReason}` : 'Released today.'}
             </div>
           ) : (
             cell.definition && <div className="entry-def">{cell.definition}</div>
@@ -143,16 +345,10 @@ function Entry({
 
         {!released && (
           <div className="choice">
-            <button
-              className={cell.status === 'kept' ? 'on-kept' : ''}
-              onClick={() => set('kept')}
-              aria-pressed={cell.status === 'kept'}
-            >kept</button>
-            <button
-              className={cell.status === 'broken' ? 'on-broken' : ''}
-              onClick={() => set('broken')}
-              aria-pressed={cell.status === 'broken'}
-            >broken</button>
+            <button className={cell.status === 'kept' ? 'on-kept' : ''}
+              onClick={() => set('kept')} aria-pressed={cell.status === 'kept'}>kept</button>
+            <button className={cell.status === 'broken' ? 'on-broken' : ''}
+              onClick={() => set('broken')} aria-pressed={cell.status === 'broken'}>broken</button>
           </div>
         )}
       </div>

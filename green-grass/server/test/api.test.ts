@@ -117,7 +117,6 @@ test('a full day can be recorded and survives a restart', () => {
   const morning = byName(day.cells, 'Morning routine');
   for (const s of morning.steps) store.setStep(db, MON, s.id, true);
 
-  store.setDayFields(db, MON, { note: 'Slow start, finished strong.' });
   db.close();
 
   const again = openDatabase(file);
@@ -130,7 +129,6 @@ test('a full day can be recorded and survives a restart', () => {
   assert.equal(byName(view.cells, 'Instagram').reason, 'Doom-scrolled after the shift.');
   assert.equal(byName(view.cells, 'Morning routine').status, 'kept',
     'a completed checklist marks itself kept');
-  assert.equal(view.note, 'Slow start, finished strong.');
   again.close();
 });
 
