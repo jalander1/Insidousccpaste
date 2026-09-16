@@ -18,7 +18,8 @@
     "test": "tsx --test server/test/*.test.ts",
     "smoke": "npm run build && node scripts/smoke-bundle.cjs",
     "typecheck": "tsc --noEmit",
-    "dist": "npm run build && electron-builder --mac --arm64"
+    "dist": "npm run build && electron-builder --mac --arm64",
+    "doctor": "tsx scripts/doctor.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",

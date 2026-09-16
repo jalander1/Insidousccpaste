@@ -48,6 +48,13 @@ certificate, not that anything is wrong with it.
 If you'd rather not package it at all, `npm run serve` runs the same app at
 `http://localhost:4321` in a browser tab.
 
+`ditto` merges into the destination, so an install always lands on top of the
+app already there. If a rebuild seems not to have changed anything, check you
+are running the build you just made — `npm run doctor` prints when the
+installed app was built, which of the migrations your record has actually run,
+and every standard the Manage screen will list. It opens the database
+read-only and changes nothing.
+
 ---
 
 ## Where your data is
