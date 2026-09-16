@@ -486,3 +486,39 @@ details.defs[open] summary::before { content: '– '; }
 .week-rival { text-align: right; font-size: 11px; letter-spacing: .06em; color: var(--dim); }
 .week-rival > span { display: block; }
 .week-rival b { color: var(--bone); font-weight: 500; }
+
+/* ------------------------------------------------------- against yesterday */
+
+.compare {
+  border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 22px;
+}
+.compare-head {
+  display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.compare-verdict {
+  font-family: var(--display); font-weight: 300; font-size: 26px;
+  line-height: 1; letter-spacing: -0.01em; flex: 1; min-width: 200px;
+}
+.compare-verdict.won { color: var(--brass); }
+.compare-verdict.held { color: var(--bone); }
+.compare-verdict.lost { color: var(--broken); }
+.compare-verdict.open { color: var(--dim); }
+.compare-tally { font-size: 11px; letter-spacing: .06em; color: var(--dim); }
+.compare-tally b { color: var(--bone); font-weight: 500; }
+
+.compare-lines { border-left: 1px solid var(--rule); padding-left: 14px; }
+.compare-line {
+  display: flex; align-items: baseline; gap: 10px; padding: 4px 0; flex-wrap: wrap;
+}
+.compare-line .arrow { font-size: 13px; width: 12px; flex: none; }
+.compare-line.up .arrow { color: var(--brass); }
+.compare-line.down .arrow { color: var(--broken); }
+.compare-line .what {
+  font-family: var(--serif); font-size: 16px; color: var(--bone); flex: 1; min-width: 160px;
+}
+.compare-line .how { font-size: 10px; letter-spacing: .08em; color: var(--dimmer); }
+
+.compare-none, .compare-level {
+  font-family: var(--serif); font-size: 14px; font-weight: 300;
+  color: var(--dimmer); font-style: italic; margin: 12px 0 0;
+}

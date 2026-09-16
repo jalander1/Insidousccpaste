@@ -38,7 +38,7 @@ export default function Today({
         )}
       </div>
 
-      <Scoreline day={day} />
+      <Comparison day={day} />
 
       {day.unfilled.length > 0 && (
         <p className="nudge">
@@ -76,39 +76,64 @@ export default function Today({
   );
 }
 
-/** The day's standing: points, the day being raced, and the run at stake. */
-function Scoreline({ day }: { day: DayView }) {
-  const { score, rival, verdict, run } = day;
-  const word = verdict === 'won' ? 'beat' : verdict === 'held' ? 'held' : 'behind';
+/**
+ * The day against yesterday, line by line. Not a score — a reflection: what
+ * you got today that you did not get yesterday, and what slipped the other way.
+ */
+function Comparison({ day }: { day: DayView }) {
+  const { comparison: c, run } = day;
+
+  if (!c.rival) {
+    return (
+      <p className="nudge" style={{ borderLeftColor: 'var(--rule)' }}>
+        {day.score.competes
+          ? 'No day behind this one yet — this is where it starts.'
+          : 'Sunday. The day of rest does not race.'}
+      </p>
+    );
+  }
+
+  const word = c.verdict === 'won' ? 'Up on yesterday'
+    : c.verdict === 'held' ? 'Level with yesterday'
+    : c.verdict === 'lost' ? 'Down on yesterday'
+    : 'Against yesterday';
 
   return (
-    <div className="scoreline">
-      <div className="score-main">
-        <span className="score-points">{score.points}</span>
-        <span className="score-of">
-          {score.kept} of {score.asked} kept
-          {score.objectivePoints > 0 && ` · +${score.objectivePoints} objectives`}
-          {score.onePercentPoints > 0 && ` · +${score.onePercentPoints} the 1%`}
+    <section className="compare">
+      <div className="compare-head">
+        <span className={`compare-verdict ${c.verdict ?? 'open'}`}>{word}</span>
+        <span className="compare-tally">
+          <b>{c.gained.length}</b> up · <b>{c.dropped.length}</b> down
+          {c.verdict === null && ' · still running'}
         </span>
-      </div>
-
-      <div className="score-side">
-        {!score.competes ? (
-          <span className="dimmed">Sunday — no contest</span>
-        ) : rival === null ? (
-          <span className="dimmed">no day behind this one yet</span>
-        ) : !score.settled ? (
-          <span className="dimmed">
-            {shortDate(rival.date)} scored <b>{rival.points}</b> · in progress
-          </span>
-        ) : (
-          <span className={`verdict ${verdict}`}>
-            {word} {shortDate(rival.date)} ({rival.points})
-          </span>
-        )}
         {run > 0 && <span className="run">held or better · {run} days</span>}
       </div>
-    </div>
+
+      {c.gained.length === 0 && c.dropped.length === 0 ? (
+        <p className="compare-none">Nothing has moved either way yet.</p>
+      ) : (
+        <div className="compare-lines">
+          {c.gained.map((l) => (
+            <div className="compare-line up" key={l.key}>
+              <span className="arrow">↑</span>
+              <span className="what">{l.name}</span>
+              <span className="how">missed yesterday, got it today</span>
+            </div>
+          ))}
+          {c.dropped.map((l) => (
+            <div className="compare-line down" key={l.key}>
+              <span className="arrow">↓</span>
+              <span className="what">{l.name}</span>
+              <span className="how">had it yesterday, not today</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {c.level > 0 && (
+        <p className="compare-level">{c.level} the same as yesterday</p>
+      )}
+    </section>
   );
 }
 

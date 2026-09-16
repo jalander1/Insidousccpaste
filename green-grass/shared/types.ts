@@ -1,5 +1,6 @@
 import type { ISODate } from './dates.js';
-import type { DayScore, ObjectiveStatus, ScoredObjective, Verdict } from './score.js';
+import type { DayScore, ObjectiveStatus, ScoredObjective } from './score.js';
+import type { DayComparison } from './compare.js';
 
 export type Kind = 'binary' | 'abstain' | 'checklist';
 
@@ -54,10 +55,9 @@ export interface DayView {
   objectives: ScoredObjective[];
   /** Separate from the objectives: the one thing being done better today. */
   onePercent: { text: string; status: ObjectiveStatus };
+  /** Points are the week's currency; the day is judged line by line. */
   score: DayScore;
-  /** Yesterday, or the Saturday before a Monday — the day being raced. */
-  rival: { date: ISODate; points: number } | null;
-  verdict: Verdict | null;
+  comparison: DayComparison;
   run: number;
   /** Past days with nothing recorded, newest first — the ones to go back for. */
   unfilled: ISODate[];

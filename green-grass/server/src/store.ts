@@ -6,9 +6,13 @@ import {
 import { checklistComplete, resolveCell, stepApplies } from '../../shared/resolve.js';
 import { computeStreaks, keptPercent, tally } from '../../shared/streaks.js';
 import {
-  currentRun, rivalOf, scoreDay, TIERS, verdictFor, weekPoints,
+  rivalOf, scoreDay, TIERS, weekPoints,
   type DayScore, type ObjectiveStatus, type ScoredObjective, type Tier,
 } from '../../shared/score.js';
+import {
+  compareDays, runFromVerdicts, verdictFromLines,
+  type Comparable, type DayComparison,
+} from '../../shared/compare.js';
 import type {
   CellStatus, DayCell, DayView, Kind, RoutineStep, StandardVersion,
   TrendStandard, TrendsView, WeekView,
@@ -159,12 +163,48 @@ export function setOnePercent(
 }
 
 export function scoreFor(db: DB, date: ISODate, today = toISO(new Date())): DayScore {
-  // An exemption lowers what the day could have scored, so a day carrying one
-  // would lose the contest for having been released from a rule. It sits the
-  // contest out instead, exactly as Sunday does.
-  const exempted = exemptionsFor(db, date).size > 0;
   return scoreDay(date, statusesOn(db, date), getObjectives(db, date),
-    getOnePercent(db, date), date < today, exempted);
+    getOnePercent(db, date), date < today);
+}
+
+/**
+ * Everything on a date that can be set against the same thing yesterday. The
+ * objectives compare as slots — did you hit your primary? — because the task
+ * itself changes from day to day.
+ */
+export function comparablesOn(db: DB, date: ISODate): Comparable[] {
+  const exempt = exemptionsFor(db, date);
+  const marks = new Map<number, 'kept' | 'broken'>(
+    (db.prepare('SELECT standard_id, status FROM mark WHERE date = ?')
+      .all(date) as any[]).map((m) => [m.standard_id, m.status]),
+  );
+
+  const items: Comparable[] = standardsAt(db, date).map((s) => {
+    const status = resolveCell(s, date, exempt.has(s.lineageId), marks.get(s.id));
+    return {
+      key: `standard:${s.lineageId}`,
+      name: s.name,
+      applicable: status !== 'released',
+      achieved: status === 'kept',
+    };
+  });
+
+  for (const o of getObjectives(db, date)) {
+    items.push({
+      key: `objective:${o.tier}`,
+      name: o.text.trim() || `${o.tier} objective`,
+      applicable: true,
+      achieved: o.status === 'hit',
+    });
+  }
+  const pct = getOnePercent(db, date);
+  items.push({
+    key: 'one-percent',
+    name: pct.text.trim() || 'the 1%',
+    applicable: true,
+    achieved: pct.status === 'hit',
+  });
+  return items;
 }
 
 /** Scores across a span, oldest first — what the verdicts and runs are read from. */
@@ -215,6 +255,8 @@ export function getDay(db: DB, date: ISODate): DayView {
   const score = history[history.length - 1];
   const rival = rivalOf(history, date);
 
+  const comparison = compareAgainstRival(db, date, history);
+
   // Days behind him with nothing on them at all — the ones worth going back for.
   const unfilled = history
     .filter((s) => s.date >= addDays(date, -21))
@@ -230,11 +272,43 @@ export function getDay(db: DB, date: ISODate): DayView {
     objectives: getObjectives(db, date),
     onePercent: getOnePercent(db, date),
     score,
-    rival: rival ? { date: rival.date, points: rival.points } : null,
-    verdict: verdictFor(score, rival),
-    run: currentRun(history),
+    comparison,
+    run: runOfDays(db, history),
     unfilled,
   };
+}
+
+/** Today set against the last day that raced — line by line. */
+function compareAgainstRival(
+  db: DB, date: ISODate, history: DayScore[],
+): DayComparison {
+  const day = history[history.length - 1];
+  const rival = rivalOf(history, date);
+  if (!day.competes || !rival) {
+    return { rival: null, gained: [], dropped: [], level: 0, verdict: null };
+  }
+  const { gained, dropped, level } =
+    compareDays(comparablesOn(db, date), comparablesOn(db, rival.date));
+  return {
+    rival: rival.date,
+    gained,
+    dropped,
+    level,
+    // A day still running is not losing; it simply has not finished.
+    verdict: day.settled ? verdictFromLines(gained, dropped) : null,
+  };
+}
+
+/** The run, read from the line-by-line verdict of each racing day. */
+function runOfDays(db: DB, history: DayScore[]): number {
+  const racing = history.filter((s) => s.competes && s.settled);
+  const verdicts = racing.map((day, i) => {
+    if (i === 0) return null;
+    const { gained, dropped } =
+      compareDays(comparablesOn(db, day.date), comparablesOn(db, racing[i - 1].date));
+    return verdictFromLines(gained, dropped);
+  });
+  return runFromVerdicts(verdicts);
 }
 
 export function setDayFields(db: DB, date: ISODate, fields: { note?: string }): void {

@@ -115,16 +115,3 @@ test('the week is simply the sum of its days', () => {
   assert.equal(weekPoints([day(MON, 'kkkkkkkkk'), day(TUE, 'kkkkkkkkb')]), 170);
 });
 
-test('a day carrying an exemption sits the contest out rather than losing it', () => {
-  // Released from the wake-up after a night shift: eight standards asked, not
-  // nine, so on raw points the day could never beat a clean one.
-  const exempted = scoreDay('2026-08-25', s('rkkkkkkkk'), none, noPct, true, true);
-  assert.equal(exempted.asked, 8);
-  assert.equal(exempted.points, 80);
-  assert.equal(exempted.competes, false, 'a released rule is not a lost contest');
-  assert.equal(verdictFor(exempted, day(MON, 'kkkkkkkkk')), null);
-
-  // And the day after races the last day that did compete.
-  const after = day('2026-08-26', 'kkkkkkkkk');
-  assert.equal(rivalOf([day(MON, 'kkkkkkkkk'), exempted, after], '2026-08-26')?.date, MON);
-});

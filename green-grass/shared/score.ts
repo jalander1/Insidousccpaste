@@ -40,11 +40,7 @@ export interface DayScore {
   onePercentPoints: number;
   kept: number;
   asked: number;
-  /**
-   * Sunday is the day of rest, and a day carrying an exemption was a day the
-   * rule was lifted — neither races. Both still score and both still count
-   * toward the week.
-   */
+  /** Sunday is the day of rest: it scores toward the week, but it does not race. */
   competes: boolean;
   /** A day is settled once it is over, or once every standard has an answer. */
   settled: boolean;
@@ -61,7 +57,6 @@ export function scoreDay(
   objectives: readonly ScoredObjective[],
   onePercent: { text: string; status: ObjectiveStatus },
   isPast: boolean,
-  exempted = false,
 ): DayScore {
   const asked = statuses.filter((s) => s !== 'released').length;
   const kept = statuses.filter((s) => s === 'kept').length;
@@ -81,7 +76,7 @@ export function scoreDay(
     onePercentPoints,
     kept,
     asked,
-    competes: weekdayIndex(date) !== 6 && !exempted,
+    competes: weekdayIndex(date) !== 6,
     settled: isPast || (asked > 0 && answered === asked),
   };
 }

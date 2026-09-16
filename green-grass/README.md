@@ -95,9 +95,33 @@ routine. A released day never breaks a streak and never counts against a
 percentage. An unanswered day is not counted as a failure either — it is simply
 not evidence.
 
-### The score, and the rival
+### The day: against yesterday, line by line
 
-Every day is scored, and the rival is yesterday.
+The day is not scored. It is set against yesterday, one line at a time: did
+you get up at nine today when you did not yesterday? That is a point up. Did
+you read yesterday and not today? That is a point down.
+
+More up than down and you won; more down and you lost; **equal and you held,
+which keeps your run alive.** Holding has to count — once you are running
+clean there is nothing left to beat, and a system that called that failure
+every day would be worthless.
+
+Only lines that both days actually asked for are compared, so a released
+standard can neither cost you nor flatter you, and an exemption is naturally
+neutral. Objectives compare as slots — did you hit your primary? — because the
+task itself changes daily. Setting no objective counts as not hitting one.
+
+**A day you never fill in drops every line, so it is a loss and it breaks the
+run.** That is the deal: you can go back and fill a day in whenever you like,
+and Today points at any blank days behind you, but a day left blank stays lost.
+
+**Sunday does not race.** It asks five things rather than nine, so the
+comparison would be thin, and it is the day of rest. Your run steps over it;
+Monday takes on the Saturday.
+
+### The week: points
+
+Points are the week's currency, not the day's.
 
 | | |
 |---|---|
@@ -107,25 +131,13 @@ Every day is scored, and the rival is yesterday.
 | Tertiary objective | 8 |
 | The 1% | 10 |
 
-Standards are the floor, so they are priced as one. The objectives are the
-tasks you set yourself, and they are priced above a standard because they are
-what actually moves you forward. A clean weekday is 90; everything on top of it
-is 140.
+Standards are the floor, so they are priced as one. The objectives are what
+actually moves you forward, so they are priced above a standard. A clean
+weekday is 90; everything on top of it is 140.
 
-Beat yesterday and you won; match it and you **held**, which keeps your run
-alive. Only going backwards breaks it — because once you are running clean,
-"beat yesterday" is impossible on standards alone, and the objectives are how
-you get past a day you could not otherwise beat.
-
-**A day you never fill in scores zero, which is a loss and breaks the run.**
-That is the deal: you can go back and fill a day in whenever you like, and
-Today will point at any blank days behind you, but a day left blank stays lost.
-
-**Sunday scores but does not race.** It only asks five things, so it cannot
-fairly take on a weekday, and it is the day of rest. Your run steps straight
-over it; Monday takes on the Saturday.
-
-The week is the sum of its days, set against last week's total.
+The week's total is set against last week's — counted to the same day of the
+week while the week is still running, so it is a live race rather than a
+foregone conclusion every Monday.
 
 ### Objectives and the 1%
 
