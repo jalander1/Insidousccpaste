@@ -95,61 +95,45 @@ routine. A released day never breaks a streak and never counts against a
 percentage. An unanswered day is not counted as a failure either — it is simply
 not evidence.
 
-### The day: against yesterday, line by line
+### The day: against yesterday, on every row
 
-The day is not scored. It is set against yesterday, one line at a time: did
-you get up at nine today when you did not yesterday? That is a point up. Did
-you read yesterday and not today? That is a point down.
+Each row carries what yesterday did with it — *yesterday · kept*, *yesterday ·
+broken* — so the comparison sits where the decision is made rather than in a
+panel above it. One quiet line at the top says where the day stands overall and
+how long the run is.
 
-More up than down and you won; more down and you lost; **equal and you held,
-which keeps your run alive.** Holding has to count — once you are running
-clean there is nothing left to beat, and a system that called that failure
-every day would be worthless.
+More lines up than down and you won; more down and you lost; **equal and you
+held**, which keeps the run alive. Holding has to count: once you are running
+clean there is nothing left to beat.
 
-Only lines that both days actually asked for are compared, so a released
-standard can neither cost you nor flatter you, and an exemption is naturally
-neutral. Objectives compare as slots — did you hit your primary? — because the
-task itself changes daily. Setting no objective counts as not hitting one.
-
-**A day you never fill in drops every line, so it is a loss and it breaks the
-run.** That is the deal: you can go back and fill a day in whenever you like,
-and Today points at any blank days behind you, but a day left blank stays lost.
-
-**Sunday does not race.** It asks five things rather than nine, so the
-comparison would be thin, and it is the day of rest. Your run steps over it;
+Only rows both days actually asked for are compared, so a released standard can
+neither cost you nor flatter you. **A day that put nothing on the board is a
+loss**, whatever it is compared against — you can go back and fill a day in
+whenever you like, and Today points at any blank days behind you, but a day
+left blank stays lost. **Sunday does not race**; the run steps over it and
 Monday takes on the Saturday.
+
+### Objectives and the 1%
+
+**The objectives are three more rows in the same ledger**, because hitting them
+is itself a standard. There is nothing to type: the tasks live in your notepad,
+and the app only wants to know whether you hit them. They are priced above an
+ordinary standard, because they are what actually moves you forward.
+
+**The 1% is written the night before** — there is a field for tomorrow's at the
+bottom of today — and it appears the next day as its own row, with its text, to
+be kept or broken. After that day it is history; you write a new one.
 
 ### The week: points
 
-Points are the week's currency, not the day's.
-
-| | |
-|---|---|
-| Each standard kept | 10 |
-| Primary objective | 20 |
-| Secondary objective | 12 |
-| Tertiary objective | 8 |
-| The 1% | 10 |
-
-Standards are the floor, so they are priced as one. The objectives are what
-actually moves you forward, so they are priced above a standard. A clean
-weekday is 90; everything on top of it is 140.
+Points are the week's currency, not the day's. Every standard carries its own
+price: ten for an ordinary one, twenty for the primary objective, twelve and
+eight for the second and third, ten for the 1%. A clean weekday is 90; with
+everything it is 140.
 
 The week's total is set against last week's — counted to the same day of the
 week while the week is still running, so it is a live race rather than a
 foregone conclusion every Monday.
-
-### Objectives and the 1%
-
-Two different things, deliberately.
-
-**Objectives** are the day's tasks — the ones you write in your notepad.
-Primary, secondary, tertiary, in that order of weight. Write the short version
-in, tap hit or missed. Set tomorrow's from the bottom of Today, which is what
-"plan and reflect on the day" in your evening routine is for.
-
-**The 1%** is not a task. It is the one thing you are doing better than
-yesterday, and it gets its own line and its own ten points.
 
 ### Why it broke
 

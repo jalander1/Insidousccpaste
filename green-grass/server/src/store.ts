@@ -6,11 +6,11 @@ import {
 import { checklistComplete, resolveCell, stepApplies } from '../../shared/resolve.js';
 import { computeStreaks, keptPercent, tally } from '../../shared/streaks.js';
 import {
-  rivalOf, scoreDay, TIERS, weekPoints,
-  type DayScore, type ObjectiveStatus, type ScoredObjective, type Tier,
+  rivalOf, scoreDay, STANDARD_POINTS, weekPoints,
+  type DayScore, type ObjectiveStatus,
 } from '../../shared/score.js';
 import {
-  compareDays, runFromVerdicts, verdictFromLines,
+  achievedSomething, compareDays, runFromVerdicts, verdictFromLines,
   type Comparable, type DayComparison,
 } from '../../shared/compare.js';
 import type {
@@ -37,7 +37,7 @@ const now = () => new Date().toISOString();
 
 interface StandardRow {
   id: number; lineage_id: number; display_order: number; name: string;
-  definition: string; kind: Kind; weekdays: string;
+  definition: string; kind: Kind; weekdays: string; points: number;
   effective_from: string; effective_to: string | null;
 }
 
@@ -57,6 +57,7 @@ function toStandard(r: StandardRow, steps: RoutineStep[]): StandardVersion {
   return {
     id: r.id, lineageId: r.lineage_id, displayOrder: r.display_order,
     name: r.name, definition: r.definition, kind: r.kind, weekdays: r.weekdays,
+    points: r.points,
     effectiveFrom: r.effective_from, effectiveTo: r.effective_to,
     steps: steps.filter((s) => s.standardId === r.id)
       .sort((a, b) => a.stepOrder - b.stepOrder),
@@ -111,38 +112,18 @@ function exemptionsFor(db: DB, date: ISODate): Map<number, string> {
   return new Map(rows.map((r) => [r.lineage_id, r.reason]));
 }
 
-export function getObjectives(db: DB, date: ISODate): ScoredObjective[] {
-  const rows = db.prepare('SELECT tier, text, status FROM objective WHERE date = ?')
-    .all(date) as ScoredObjective[];
-  // Always hand back all three slots, so the interface has somewhere to type.
-  return TIERS.map((tier) =>
-    rows.find((r) => r.tier === tier) ?? { tier, text: '', status: 'unset' as const });
-}
-
-export function setObjective(
-  db: DB, date: ISODate, tier: Tier,
-  fields: { text?: string; status?: 'unset' | 'hit' | 'missed' },
-): void {
-  ensureDay(db, date);
-  const current = getObjectives(db, date).find((o) => o.tier === tier)!;
-  const text = fields.text ?? current.text;
-  // An objective with nothing written in it cannot be hit or missed.
-  const status = !text.trim() ? 'unset' : (fields.status ?? current.status);
-  db.prepare(
-    `INSERT INTO objective (date, tier, text, status) VALUES (?, ?, ?, ?)
-     ON CONFLICT(date, tier) DO UPDATE SET text = excluded.text, status = excluded.status`,
-  ).run(date, tier, text, status);
-}
-
-/** The resolved statuses for one date, without building the whole view. */
-function statusesOn(db: DB, date: ISODate): CellStatus[] {
+/** The resolved rows for one date, without building the whole view. */
+function rowsOn(db: DB, date: ISODate) {
   const exempt = exemptionsFor(db, date);
   const marks = new Map<number, 'kept' | 'broken'>(
     (db.prepare('SELECT standard_id, status FROM mark WHERE date = ?')
       .all(date) as any[]).map((m) => [m.standard_id, m.status]),
   );
-  return standardsAt(db, date)
-    .map((s) => resolveCell(s, date, exempt.has(s.lineageId), marks.get(s.id)));
+  return standardsAt(db, date).map((s) => ({
+    standard: s,
+    status: resolveCell(s, date, exempt.has(s.lineageId), marks.get(s.id)),
+    points: s.points,
+  }));
 }
 
 export function getOnePercent(db: DB, date: ISODate): { text: string; status: ObjectiveStatus } {
@@ -163,54 +144,31 @@ export function setOnePercent(
 }
 
 export function scoreFor(db: DB, date: ISODate, today = toISO(new Date())): DayScore {
-  return scoreDay(date, statusesOn(db, date), getObjectives(db, date),
-    getOnePercent(db, date), date < today);
-}
-
-/**
- * Everything on a date that can be set against the same thing yesterday. The
- * objectives compare as slots — did you hit your primary? — because the task
- * itself changes from day to day.
- */
-export function comparablesOn(db: DB, date: ISODate): Comparable[] {
-  const exempt = exemptionsFor(db, date);
-  const marks = new Map<number, 'kept' | 'broken'>(
-    (db.prepare('SELECT standard_id, status FROM mark WHERE date = ?')
-      .all(date) as any[]).map((m) => [m.standard_id, m.status]),
-  );
-
-  const items: Comparable[] = standardsAt(db, date).map((s) => {
-    const status = resolveCell(s, date, exempt.has(s.lineageId), marks.get(s.id));
-    return {
-      key: `standard:${s.lineageId}`,
-      name: s.name,
-      applicable: status !== 'released',
-      achieved: status === 'kept',
-    };
-  });
-
-  for (const o of getObjectives(db, date)) {
-    items.push({
-      key: `objective:${o.tier}`,
-      name: o.text.trim() || `${o.tier} objective`,
-      applicable: true,
-      achieved: o.status === 'hit',
-    });
-  }
-  const pct = getOnePercent(db, date);
-  items.push({
-    key: 'one-percent',
-    name: pct.text.trim() || 'the 1%',
-    applicable: true,
-    achieved: pct.status === 'hit',
-  });
-  return items;
+  return scoreDay(date, rowsOn(db, date), getOnePercent(db, date), date < today);
 }
 
 /** Scores across a span, oldest first — what the verdicts and runs are read from. */
 export function scoresBetween(db: DB, from: ISODate, to: ISODate): DayScore[] {
   const today = toISO(new Date());
   return rangeDates(from, to).map((d) => scoreFor(db, d, today));
+}
+
+/** Everything on a date that can be set against the same thing yesterday. */
+export function comparablesOn(db: DB, date: ISODate): Comparable[] {
+  const items: Comparable[] = rowsOn(db, date).map((r) => ({
+    key: `standard:${r.standard.lineageId}`,
+    name: r.standard.name,
+    applicable: r.status !== 'released',
+    achieved: r.status === 'kept',
+  }));
+  const pct = getOnePercent(db, date);
+  items.push({
+    key: 'one-percent',
+    name: pct.text.trim() || 'the 1%',
+    applicable: !!pct.text.trim(),
+    achieved: pct.status === 'hit',
+  });
+  return items;
 }
 
 export function getDay(db: DB, date: ISODate): DayView {
@@ -229,9 +187,17 @@ export function getDay(db: DB, date: ISODate): DayView {
       .all(date) as { step_id: number }[]).map((r) => r.step_id),
   );
 
+  // Yesterday's outcome sits on the row itself, so the comparison is read
+  // where the decision is made rather than summarised in a panel above it.
+  const rivalDay = rivalOf(scoresBetween(db, addDays(date, -14), date), date);
+  const before = new Map<number, CellStatus>(
+    rivalDay ? rowsOn(db, rivalDay.date).map((r) => [r.standard.lineageId, r.status]) : [],
+  );
+
   const cells: DayCell[] = standards.map((s) => {
     const isExempt = exempt.has(s.lineageId);
     const mark = marks.get(s.id);
+    const was = before.get(s.lineageId) ?? null;
     return {
       lineageId: s.lineageId,
       standardId: s.id,
@@ -239,7 +205,9 @@ export function getDay(db: DB, date: ISODate): DayView {
       definition: s.definition,
       kind: s.kind,
       displayOrder: s.displayOrder,
+      points: s.points,
       status: resolveCell(s, date, isExempt, mark?.status),
+      yesterday: was === 'released' ? null : was,
       reason: mark?.reason ?? '',
       exemptReason: isExempt ? (exempt.get(s.lineageId) || '') : null,
       steps: s.steps.map((st) => ({
@@ -269,8 +237,14 @@ export function getDay(db: DB, date: ISODate): DayView {
   return {
     date,
     cells,
-    objectives: getObjectives(db, date),
-    onePercent: getOnePercent(db, date),
+    onePercent: {
+      ...getOnePercent(db, date),
+      yesterday: rivalDay
+        ? (getOnePercent(db, rivalDay.date).text.trim()
+            ? getOnePercent(db, rivalDay.date).status : null)
+        : null,
+    },
+    tomorrowOnePercent: getOnePercent(db, addDays(date, 1)).text,
     score,
     comparison,
     run: runOfDays(db, history),
@@ -287,15 +261,17 @@ function compareAgainstRival(
   if (!day.competes || !rival) {
     return { rival: null, gained: [], dropped: [], level: 0, verdict: null };
   }
-  const { gained, dropped, level } =
-    compareDays(comparablesOn(db, date), comparablesOn(db, rival.date));
+  const mine = comparablesOn(db, date);
+  const { gained, dropped, level } = compareDays(mine, comparablesOn(db, rival.date));
   return {
     rival: rival.date,
     gained,
     dropped,
     level,
     // A day still running is not losing; it simply has not finished.
-    verdict: day.settled ? verdictFromLines(gained, dropped) : null,
+    verdict: day.settled
+      ? verdictFromLines(gained, dropped, achievedSomething(mine))
+      : null,
   };
 }
 
@@ -304,9 +280,9 @@ function runOfDays(db: DB, history: DayScore[]): number {
   const racing = history.filter((s) => s.competes && s.settled);
   const verdicts = racing.map((day, i) => {
     if (i === 0) return null;
-    const { gained, dropped } =
-      compareDays(comparablesOn(db, day.date), comparablesOn(db, racing[i - 1].date));
-    return verdictFromLines(gained, dropped);
+    const mine = comparablesOn(db, day.date);
+    const { gained, dropped } = compareDays(mine, comparablesOn(db, racing[i - 1].date));
+    return verdictFromLines(gained, dropped, achievedSomething(mine));
   });
   return runFromVerdicts(verdicts);
 }
@@ -575,6 +551,7 @@ export function updateStandard(
   db: DB, lineageId: number,
   fields: {
     name?: string; definition?: string; kind?: Kind; weekdays?: string;
+    points?: number;
     steps?: { name: string; detail: string; weekdays: string | null }[];
   },
 ): StandardVersion | null {
@@ -592,6 +569,7 @@ export function updateStandard(
     definition: fields.definition ?? cur.definition,
     kind: fields.kind ?? cur.kind,
     weekdays: fields.weekdays ?? cur.weekdays,
+    points: fields.points ?? cur.points,
   };
   const nextSteps = fields.steps
     ?? steps.map((s) => ({ name: s.name, detail: s.detail, weekdays: s.weekdays }));
@@ -599,6 +577,7 @@ export function updateStandard(
   const unchanged =
     next.name === cur.name && next.definition === cur.definition &&
     next.kind === cur.kind && next.weekdays === cur.weekdays &&
+    next.points === cur.points &&
     JSON.stringify(nextSteps) === JSON.stringify(
       steps.map((s) => ({ name: s.name, detail: s.detail, weekdays: s.weekdays })));
   if (unchanged) return currentStandards(db).find((s) => s.lineageId === lineageId) ?? null;
@@ -609,8 +588,9 @@ export function updateStandard(
     // Safe for marks either way — they point at this same row.
     if (cur.effective_from >= trackingDate()) {
       db.prepare(
-        'UPDATE standard SET name=?, definition=?, kind=?, weekdays=? WHERE id=?',
-      ).run(next.name, next.definition, next.kind, next.weekdays, cur.id);
+        `UPDATE standard SET name=?, definition=?, kind=?, weekdays=?, points=?
+          WHERE id=?`,
+      ).run(next.name, next.definition, next.kind, next.weekdays, next.points, cur.id);
       replaceSteps(db, cur.id, nextSteps);
       return;
     }
@@ -618,9 +598,9 @@ export function updateStandard(
       .run(addDays(today, -1), cur.id);
     const info = db.prepare(
       `INSERT INTO standard (lineage_id, display_order, name, definition, kind,
-         weekdays, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         weekdays, points, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(lineageId, cur.display_order, next.name, next.definition, next.kind,
-      next.weekdays, today);
+      next.weekdays, next.points, today);
     replaceSteps(db, Number(info.lastInsertRowid), nextSteps);
   })();
 
@@ -642,6 +622,7 @@ export function createStandard(
   db: DB,
   f: {
     name: string; definition?: string; kind?: Kind; weekdays?: string;
+    points?: number;
     steps?: { name: string; detail: string; weekdays: string | null }[];
   },
 ): StandardVersion {
@@ -656,9 +637,9 @@ export function createStandard(
   db.transaction(() => {
     const info = db.prepare(
       `INSERT INTO standard (lineage_id, display_order, name, definition, kind,
-         weekdays, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         weekdays, points, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(lineageId, max.d + 1, f.name, f.definition ?? '', f.kind ?? 'binary',
-      f.weekdays ?? 'MTWTFSS', start);
+      f.weekdays ?? 'MTWTFSS', f.points ?? STANDARD_POINTS, start);
     if (f.steps?.length) replaceSteps(db, Number(info.lastInsertRowid), f.steps);
   })();
   return currentStandards(db).find((s) => s.lineageId === lineageId)!;

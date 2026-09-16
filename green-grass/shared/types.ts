@@ -1,5 +1,5 @@
 import type { ISODate } from './dates.js';
-import type { DayScore, ObjectiveStatus, ScoredObjective } from './score.js';
+import type { DayScore, ObjectiveStatus } from './score.js';
 import type { DayComparison } from './compare.js';
 
 export type Kind = 'binary' | 'abstain' | 'checklist';
@@ -15,6 +15,8 @@ export interface StandardVersion {
   definition: string;
   kind: Kind;
   weekdays: string;
+  /** What keeping it is worth. The objectives are priced above a standard. */
+  points: number;
   effectiveFrom: ISODate;
   effectiveTo: ISODate | null;
   steps: RoutineStep[];
@@ -42,7 +44,10 @@ export interface DayCell {
   definition: string;
   kind: Kind;
   displayOrder: number;
+  points: number;
   status: CellStatus;
+  /** What the day being raced did with this same row. */
+  yesterday: CellStatus | null;
   reason: string;
   /** Set when the cell is released by a per-date exemption rather than the schedule. */
   exemptReason: string | null;
@@ -52,9 +57,10 @@ export interface DayCell {
 export interface DayView {
   date: ISODate;
   cells: DayCell[];
-  objectives: ScoredObjective[];
-  /** Separate from the objectives: the one thing being done better today. */
-  onePercent: { text: string; status: ObjectiveStatus };
+  /** Written the night before, ticked that day, gone after it. */
+  onePercent: { text: string; status: ObjectiveStatus; yesterday: ObjectiveStatus | null };
+  /** What he has set for tomorrow, so he can write it while winding down. */
+  tomorrowOnePercent: string;
   /** Points are the week's currency; the day is judged line by line. */
   score: DayScore;
   comparison: DayComparison;

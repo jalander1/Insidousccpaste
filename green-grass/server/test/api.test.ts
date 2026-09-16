@@ -21,10 +21,16 @@ const SUN = '2026-08-30';
 const byName = <T extends { name: string }>(cells: T[], name: string): T =>
   cells.find((c) => c.name.startsWith(name))!;
 
-test('the seed is the owner’s ten standards', () => {
+test('the seed is his standards, with the objectives among them', () => {
   const { db } = tempDb();
   const standards = store.currentStandards(db);
-  assert.equal(standards.length, 10);
+  assert.equal(standards.length, 13, 'ten standards and the three objectives');
+
+  // Hitting his objectives is itself a standard, priced above the rest.
+  assert.equal(byName(standards, 'Primary objective').points, 20);
+  assert.equal(byName(standards, 'Secondary objective').points, 12);
+  assert.equal(byName(standards, 'Tertiary objective').points, 8);
+  assert.equal(byName(standards, 'Wake by').points, 10);
   assert.equal(standards[0].name, 'Wake by 09:00', 'the wake-up leads');
   assert.equal(standards[0].weekdays, 'MTWTFS-', 'Sunday is released');
   assert.equal(byName(standards, 'Evening routine').weekdays, 'MTWTFSS', 'every day');

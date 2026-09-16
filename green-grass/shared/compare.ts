@@ -56,11 +56,22 @@ export function compareDays(
 }
 
 export function verdictFromLines(
-  gained: readonly unknown[], dropped: readonly unknown[],
+  gained: readonly unknown[],
+  dropped: readonly unknown[],
+  achievedSomething: boolean,
 ): Verdict {
+  // A day that did nothing at all is a loss on its own terms. Without this, a
+  // stretch of blank days compares level with itself and reads as an unbroken
+  // run of holding the line at nothing.
+  if (!achievedSomething) return 'lost';
   if (gained.length > dropped.length) return 'won';
   if (gained.length === dropped.length) return 'held';
   return 'lost';
+}
+
+/** Did the day put anything at all on the board? */
+export function achievedSomething(items: readonly Comparable[]): boolean {
+  return items.some((c) => c.applicable && c.achieved);
 }
 
 /** Consecutive days that did not go backwards, most recent first. */

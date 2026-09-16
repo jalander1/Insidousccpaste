@@ -1,19 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  bestRun, currentRun, rivalOf, scoreDay, verdictFor, weekPoints,
-  type ScoredObjective,
+  bestRun, currentRun, rivalOf, scoreDay, STANDARD_POINTS, verdictFor, weekPoints,
+  type ScoredRow,
 } from '../../shared/score.js';
 import type { CellStatus } from '../../shared/types.js';
 
-const s = (str: string): CellStatus[] => [...str].map((c) => (
-  c === 'k' ? 'kept' : c === 'b' ? 'broken' : c === 'r' ? 'released' : 'unanswered'
-));
-const none: ScoredObjective[] = [];
+/** Ordinary standards unless a price is given. */
+const s = (str: string, points = STANDARD_POINTS): ScoredRow[] => [...str].map((c) => ({
+  status: (c === 'k' ? 'kept' : c === 'b' ? 'broken' : c === 'r' ? 'released'
+    : 'unanswered') as CellStatus,
+  points,
+}));
 const noPct: { text: string; status: 'unset' | 'hit' | 'missed' } =
   { text: '', status: 'unset' };
-const day = (date: string, statuses: string, objs = none, pct = noPct, past = true) =>
-  scoreDay(date, s(statuses), objs, pct, past);
+const day = (date: string, statuses: string, pct = noPct, past = true) =>
+  scoreDay(date, s(statuses), pct, past);
 
 // Mon 24 Aug 2026 … Sun 30 Aug 2026.
 const MON = '2026-08-24', TUE = '2026-08-25', SAT = '2026-08-29', SUN = '2026-08-30';
@@ -37,26 +39,32 @@ test('released days are not asked of him and do not dilute the day', () => {
   assert.equal(sunday.points, 50);
 });
 
-test('objectives are the way past a day you could not otherwise beat', () => {
-  const objectives: ScoredObjective[] = [
-    { tier: 'primary', text: 'Film the intro', status: 'hit' },
-    { tier: 'secondary', text: 'Book the studio', status: 'hit' },
-    { tier: 'tertiary', text: 'Clear the inbox', status: 'missed' },
+test('each row is worth what its standard is worth', () => {
+  // The objectives are standards too, priced above the rest: 20, 12 and 8.
+  const rows: ScoredRow[] = [
+    ...s('kkkkkkkkk'),
+    { status: 'kept', points: 20 },
+    { status: 'kept', points: 12 },
+    { status: 'broken', points: 8 },
   ];
-  const perfect = day(MON, 'kkkkkkkkk');
-  const perfectPlus = day(TUE, 'kkkkkkkkk', objectives);
-
-  assert.equal(perfectPlus.points, 90 + 32, 'primary 20 + secondary 12');
-  assert.equal(verdictFor(perfect, null), null, 'nothing behind it to race');
-  assert.equal(verdictFor(perfectPlus, perfect), 'won',
-    'a clean day can still be beaten, by reaching further');
+  const d = scoreDay(TUE, rows, noPct, true);
+  assert.equal(d.points, 90 + 32, 'the tertiary was missed');
+  assert.equal(d.asked, 12);
 });
 
-test('the 1% is separate from the objectives and scores on its own', () => {
-  const withPct = day(MON, 'kkkkkkkkk', none, { text: 'Phone left downstairs', status: 'hit' });
+test('the 1% only counts on days one was actually set', () => {
+  const blank = day(MON, 'kkkkkkkkk');
+  assert.equal(blank.asked, 9, 'no 1% written, so none asked of him');
+
+  const withPct = day(MON, 'kkkkkkkkk', { text: 'Phone left downstairs', status: 'hit' });
   assert.equal(withPct.onePercentPoints, 10);
-  assert.equal(withPct.objectivePoints, 0, 'it is not one of the three tasks');
   assert.equal(withPct.points, 100);
+  assert.equal(withPct.asked, 10);
+});
+
+test('a 1% written but not answered leaves the day unsettled', () => {
+  const pending = scoreDay(MON, s('kkkkkkkkk'), { text: 'Phone downstairs', status: 'unset' }, false);
+  assert.equal(pending.settled, false, 'the day still has something to answer');
 });
 
 test('matching yesterday holds the run — only going backwards breaks it', () => {
@@ -77,11 +85,11 @@ test('Sunday scores but does not race, and Monday takes on the Saturday', () => 
 });
 
 test('today is not losing just because it has not happened yet', () => {
-  const inProgress = scoreDay(MON, s('uuuuuuuuu'), none, noPct, false);
+  const inProgress = scoreDay(MON, s('uuuuuuuuu'), noPct, false);
   assert.equal(inProgress.settled, false);
   assert.equal(verdictFor(inProgress, day('2026-08-23', 'kkkkkkkkk')), null);
 
-  const finished = scoreDay(MON, s('kkkkkkkkb'), none, noPct, false);
+  const finished = scoreDay(MON, s('kkkkkkkkb'), noPct, false);
   assert.equal(finished.settled, true, 'answered in full, so it settles the same day');
 });
 

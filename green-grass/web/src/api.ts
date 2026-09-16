@@ -26,12 +26,8 @@ export const api = {
     put<DayView>(`/api/mark/${date}/${standardId}`, { status, reason }),
   step: (date: string, stepId: number, checked: boolean) =>
     put<DayView>(`/api/step/${date}/${stepId}`, { checked }),
-  objective: (date: string, tier: string, f: { text?: string; status?: string }) =>
-    put<DayView>(`/api/objective/${date}/${tier}`, f),
   onePercent: (date: string, f: { text?: string; status?: string }) =>
     put<DayView>(`/api/one-percent/${date}`, f),
-  objectives: (date: string) =>
-    req<{ tier: string; text: string; status: string }[]>(`/api/objectives/${date}`),
 
   week: (weekStart: string) => req<WeekView>(`/api/week/${weekStart}`),
   saveWeek: (weekStart: string, review: string) =>

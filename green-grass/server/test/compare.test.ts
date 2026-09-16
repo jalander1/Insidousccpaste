@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compareDays, runFromVerdicts, verdictFromLines, type Comparable }
-  from '../../shared/compare.js';
+import {
+  achievedSomething, compareDays, runFromVerdicts, verdictFromLines, type Comparable,
+} from '../../shared/compare.js';
 
 const item = (key: string, achieved: boolean, applicable = true): Comparable =>
   ({ key, name: key, applicable, achieved });
@@ -14,7 +15,7 @@ test('the day is read line by line: what you got today and did not yesterday', (
   assert.deepEqual(gained.map((l) => l.key), ['standard:1'], 'up on the wake-up');
   assert.deepEqual(dropped.map((l) => l.key), ['standard:2'], 'down on the reading');
   assert.equal(level, 1);
-  assert.equal(verdictFromLines(gained, dropped), 'held', 'one each way is level');
+  assert.equal(verdictFromLines(gained, dropped, true), 'held', 'one each way is level');
 });
 
 test('a line only counts when both days actually asked for it', () => {
@@ -49,13 +50,22 @@ test('a day never filled in drops every line it shares with yesterday', () => {
 
   const { gained, dropped } = compareDays(blank, yesterday);
   assert.equal(dropped.length, 3);
-  assert.equal(verdictFromLines(gained, dropped), 'lost');
+  assert.equal(verdictFromLines(gained, dropped, achievedSomething(blank)), 'lost');
+});
+
+test('two blank days in a row do not hold the line at nothing', () => {
+  const blank = [item('standard:1', false), item('standard:2', false)];
+  const { gained, dropped } = compareDays(blank, blank);
+  assert.equal(gained.length, 0);
+  assert.equal(dropped.length, 0, 'nothing moved either way');
+  assert.equal(verdictFromLines(gained, dropped, achievedSomething(blank)), 'lost',
+    'but a day that put nothing on the board is still a loss');
 });
 
 test('more up than down wins, fewer loses, equal holds', () => {
-  assert.equal(verdictFromLines([1, 2], [1]), 'won');
-  assert.equal(verdictFromLines([1], [1, 2]), 'lost');
-  assert.equal(verdictFromLines([], []), 'held', 'an identical day holds the line');
+  assert.equal(verdictFromLines([1, 2], [1], true), 'won');
+  assert.equal(verdictFromLines([1], [1, 2], true), 'lost');
+  assert.equal(verdictFromLines([], [], true), 'held', 'an identical day holds the line');
 });
 
 test('the run counts back over days that did not go backwards', () => {

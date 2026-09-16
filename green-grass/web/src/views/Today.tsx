@@ -3,9 +3,7 @@ import { api } from '../api.js';
 import { track, useDebouncedSave } from '../save.js';
 import { addDays, longDate, shortDate, toISO, trackingDate }
   from '../../../shared/dates.js';
-import { ONE_PERCENT_POINTS, TIER_POINTS, TIERS, type Tier }
-  from '../../../shared/score.js';
-import type { DayCell, DayView } from '../../../shared/types.js';
+import type { CellStatus, DayCell, DayView } from '../../../shared/types.js';
 
 export default function Today({
   date, setDate,
@@ -20,6 +18,13 @@ export default function Today({
   const today = toISO(new Date());
   const isTracking = date === trackingDate();
   const apply = (v: DayView | undefined) => { if (v) setDay(v); };
+  const c = day.comparison;
+
+  const standing = c.verdict === 'won' ? 'Up on yesterday'
+    : c.verdict === 'held' ? 'Level with yesterday'
+    : c.verdict === 'lost' ? 'Down on yesterday'
+    : !day.score.competes ? 'Sunday — no contest'
+    : c.rival ? 'Against yesterday' : 'Nothing behind this one yet';
 
   return (
     <>
@@ -38,7 +43,20 @@ export default function Today({
         )}
       </div>
 
-      <Comparison day={day} />
+      <div className="standing">
+        <span className={`standing-word ${c.verdict ?? 'open'}`}>{standing}</span>
+        {c.rival && (
+          <span className="standing-tally">
+            {c.gained.length} up · {c.dropped.length} down
+            {c.verdict === null && ' · still running'}
+          </span>
+        )}
+        {day.run > 0 && (
+          <span className="run">
+            held or better · {day.run} day{day.run === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
 
       {day.unfilled.length > 0 && (
         <p className="nudge">
@@ -57,10 +75,15 @@ export default function Today({
         {day.cells.map((cell, i) => (
           <Entry key={cell.lineageId} cell={cell} index={i + 1} date={date} onChange={apply} />
         ))}
+        <OnePercentRow
+          day={day}
+          index={day.cells.length + 1}
+          date={date}
+          onChange={apply}
+        />
       </div>
 
-      <Objectives day={day} date={date} onChange={apply} />
-      <OnePercent day={day} date={date} onChange={apply} />
+      <Tomorrow date={date} initial={day.tomorrowOnePercent} />
 
       <details className="defs">
         <summary>The definitions</summary>
@@ -76,116 +99,29 @@ export default function Today({
   );
 }
 
-/**
- * The day against yesterday, line by line. Not a score — a reflection: what
- * you got today that you did not get yesterday, and what slipped the other way.
- */
-function Comparison({ day }: { day: DayView }) {
-  const { comparison: c, run } = day;
-
-  if (!c.rival) {
-    return (
-      <p className="nudge" style={{ borderLeftColor: 'var(--rule)' }}>
-        {day.score.competes
-          ? 'No day behind this one yet — this is where it starts.'
-          : 'Sunday. The day of rest does not race.'}
-      </p>
-    );
-  }
-
-  const word = c.verdict === 'won' ? 'Up on yesterday'
-    : c.verdict === 'held' ? 'Level with yesterday'
-    : c.verdict === 'lost' ? 'Down on yesterday'
-    : 'Against yesterday';
-
-  return (
-    <section className="compare">
-      <div className="compare-head">
-        <span className={`compare-verdict ${c.verdict ?? 'open'}`}>{word}</span>
-        <span className="compare-tally">
-          <b>{c.gained.length}</b> up · <b>{c.dropped.length}</b> down
-          {c.verdict === null && ' · still running'}
-        </span>
-        {run > 0 && <span className="run">held or better · {run} days</span>}
-      </div>
-
-      {c.gained.length === 0 && c.dropped.length === 0 ? (
-        <p className="compare-none">Nothing has moved either way yet.</p>
-      ) : (
-        <div className="compare-lines">
-          {c.gained.map((l) => (
-            <div className="compare-line up" key={l.key}>
-              <span className="arrow">↑</span>
-              <span className="what">{l.name}</span>
-              <span className="how">missed yesterday, got it today</span>
-            </div>
-          ))}
-          {c.dropped.map((l) => (
-            <div className="compare-line down" key={l.key}>
-              <span className="arrow">↓</span>
-              <span className="what">{l.name}</span>
-              <span className="how">had it yesterday, not today</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {c.level > 0 && (
-        <p className="compare-level">{c.level} the same as yesterday</p>
-      )}
-    </section>
-  );
+/** What yesterday did with this same row, sat under today's choice. */
+function Yesterday({ status }: { status: CellStatus | null }) {
+  if (status === null) return <span className="yday none">not asked yesterday</span>;
+  if (status === 'kept') return <span className="yday kept">yesterday · kept</span>;
+  if (status === 'broken') return <span className="yday missed">yesterday · broken</span>;
+  return <span className="yday none">yesterday · not filled in</span>;
 }
 
-/** What he set out to do today, from his notepad. Hit or missed, nothing more. */
-function Objectives({
-  day, date, onChange,
-}: { day: DayView; date: string; onChange: (v: DayView | undefined) => void }) {
-  const [tomorrow, setTomorrow] = useState(false);
-
-  return (
-    <section className="panel">
-      <h2>Objectives</h2>
-      <p className="serif muted" style={{ fontSize: 15, marginTop: 2 }}>
-        The tasks you set out for today.
-      </p>
-
-      {TIERS.map((tier) => (
-        <ObjectiveRow
-          key={tier}
-          tier={tier}
-          date={date}
-          value={day.objectives.find((o) => o.tier === tier)!}
-          onChange={onChange}
-        />
-      ))}
-
-      <div style={{ marginTop: 18, borderTop: '1px solid var(--rule)', paddingTop: 14 }}>
-        {tomorrow ? (
-          <TomorrowObjectives date={addDays(date, 1)} onDone={() => setTomorrow(false)} />
-        ) : (
-          <button className="mini" onClick={() => setTomorrow(true)}>
-            + set tomorrow's
-          </button>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** Not one of the tasks: the one thing being done better than yesterday. */
-function OnePercent({
-  day, date, onChange,
-}: { day: DayView; date: string; onChange: (v: DayView | undefined) => void }) {
-  const [text, setText] = useState(day.onePercent.text);
+/** The 1%: written the night before, ticked that day, gone after it. */
+function OnePercentRow({
+  day, index, date, onChange,
+}: {
+  day: DayView; index: number; date: string;
+  onChange: (v: DayView | undefined) => void;
+}) {
+  const { onePercent } = day;
+  const [text, setText] = useState(onePercent.text);
   const unsaved = useRef(false);
 
-  useEffect(() => {
-    if (!unsaved.current) setText(day.onePercent.text);
-  }, [day.onePercent.text]);
+  useEffect(() => { if (!unsaved.current) setText(onePercent.text); }, [onePercent.text]);
 
   useDebouncedSave(text, async (v) => {
-    if (v === day.onePercent.text) return;
+    if (v === onePercent.text) return;
     const out = await api.onePercent(date, { text: v });
     unsaved.current = false;
     return out;
@@ -193,84 +129,39 @@ function OnePercent({
 
   const set = async (status: 'hit' | 'missed') =>
     onChange(await track(api.onePercent(date,
-      { status: day.onePercent.status === status ? 'unset' : status })));
+      { status: onePercent.status === status ? 'unset' : status })));
 
   return (
-    <section className="panel">
-      <h2>1% better</h2>
-      <p className="serif muted" style={{ fontSize: 15, marginTop: 2 }}>
-        One thing, done better than yesterday.
-      </p>
-      <div className="objective" style={{ marginTop: 14 }}>
-        <div className="obj-head">
-          <span className="obj-tier">the 1%</span>
-          <span className="obj-pts">{ONE_PERCENT_POINTS}</span>
-        </div>
-        <div className="obj-main">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => { unsaved.current = true; setText(e.target.value); }}
-            placeholder="Where you are being 1% better today"
-          />
-          {text.trim() && (
-            <div className="choice">
-              <button className={day.onePercent.status === 'hit' ? 'on-kept' : ''}
-                onClick={() => set('hit')}
-                aria-pressed={day.onePercent.status === 'hit'}>hit</button>
-              <button className={day.onePercent.status === 'missed' ? 'on-broken' : ''}
-                onClick={() => set('missed')}
-                aria-pressed={day.onePercent.status === 'missed'}>missed</button>
-            </div>
+    <div className="entry">
+      <div className="entry-main">
+        <div className="entry-body">
+          <div className="entry-num">{String(index).padStart(2, '0')} · the 1%</div>
+          {onePercent.text.trim() ? (
+            <div className="entry-name">{onePercent.text}</div>
+          ) : (
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => { unsaved.current = true; setText(e.target.value); }}
+              placeholder="Nothing set for today — write it in"
+              style={{ marginTop: 4 }}
+            />
           )}
         </div>
-      </div>
-    </section>
-  );
-}
 
-function ObjectiveRow({
-  tier, date, value, onChange,
-}: {
-  tier: Tier; date: string;
-  value: { tier: string; text: string; status: string };
-  onChange: (v: DayView | undefined) => void;
-}) {
-  const [text, setText] = useState(value.text);
-  const unsaved = useRef(false);
-
-  useEffect(() => { if (!unsaved.current) setText(value.text); }, [value.text]);
-
-  useDebouncedSave(text, async (v) => {
-    if (v === value.text) return;
-    const out = await api.objective(date, tier, { text: v });
-    unsaved.current = false;
-    return out;
-  });
-
-  const set = async (status: 'hit' | 'missed') =>
-    onChange(await track(api.objective(date, tier,
-      { status: value.status === status ? 'unset' : status })));
-
-  return (
-    <div className="objective">
-      <div className="obj-head">
-        <span className="obj-tier">{tier}</span>
-        <span className="obj-pts">{TIER_POINTS[tier]}</span>
-      </div>
-      <div className="obj-main">
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => { unsaved.current = true; setText(e.target.value); }}
-          placeholder={tier === 'primary' ? 'The one that matters most' : 'Optional'}
-        />
-        {text.trim() && (
-          <div className="choice">
-            <button className={value.status === 'hit' ? 'on-kept' : ''}
-              onClick={() => set('hit')} aria-pressed={value.status === 'hit'}>hit</button>
-            <button className={value.status === 'missed' ? 'on-broken' : ''}
-              onClick={() => set('missed')} aria-pressed={value.status === 'missed'}>missed</button>
+        {onePercent.text.trim() && (
+          <div className="choice-stack">
+            <div className="choice">
+              <button className={onePercent.status === 'hit' ? 'on-kept' : ''}
+                onClick={() => set('hit')}
+                aria-pressed={onePercent.status === 'hit'}>kept</button>
+              <button className={onePercent.status === 'missed' ? 'on-broken' : ''}
+                onClick={() => set('missed')}
+                aria-pressed={onePercent.status === 'missed'}>broken</button>
+            </div>
+            <Yesterday status={
+              onePercent.yesterday === 'hit' ? 'kept'
+                : onePercent.yesterday === 'missed' ? 'broken' : null} />
           </div>
         )}
       </div>
@@ -278,46 +169,31 @@ function ObjectiveRow({
   );
 }
 
-/** Written during the evening routine, while he is already sitting there. */
-function TomorrowObjectives({ date, onDone }: { date: string; onDone: () => void }) {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [loaded, setLoaded] = useState(false);
+/** Written while winding down, for the day ahead. */
+function Tomorrow({ date, initial }: { date: string; initial: string }) {
+  const [text, setText] = useState(initial);
+  const unsaved = useRef(false);
+  const tomorrow = addDays(date, 1);
 
-  useEffect(() => {
-    void api.objectives(date).then((rows) => {
-      setValues(Object.fromEntries(rows.map((r) => [r.tier, r.text])));
-      setLoaded(true);
-    });
-  }, [date]);
+  useEffect(() => { if (!unsaved.current) setText(initial); }, [initial]);
 
-  useDebouncedSave(values, async (v) => {
-    if (!loaded) return;
-    for (const tier of TIERS) {
-      if (v[tier] !== undefined) await api.objective(date, tier, { text: v[tier] });
-    }
+  useDebouncedSave(text, async (v) => {
+    if (v === initial) return;
+    await api.onePercent(tomorrow, { text: v });
+    unsaved.current = false;
   });
 
-  if (!loaded) return null;
-
   return (
-    <div>
-      <p className="lead">Tomorrow — {longDate(date)}</p>
-      {TIERS.map((tier) => (
-        <div className="objective" key={tier}>
-          <div className="obj-head">
-            <span className="obj-tier">{tier}</span>
-            <span className="obj-pts">{TIER_POINTS[tier]}</span>
-          </div>
-          <input
-            type="text"
-            value={values[tier] ?? ''}
-            onChange={(e) => setValues({ ...values, [tier]: e.target.value })}
-            placeholder={tier === 'primary' ? 'The one that matters most' : 'Optional'}
-          />
-        </div>
-      ))}
-      <button className="mini" onClick={onDone} style={{ marginTop: 10 }}>done</button>
-    </div>
+    <section className="tomorrow">
+      <label htmlFor="tomorrow-pct">Tomorrow's 1%</label>
+      <input
+        id="tomorrow-pct"
+        type="text"
+        value={text}
+        onChange={(e) => { unsaved.current = true; setText(e.target.value); }}
+        placeholder="The one thing you will do better tomorrow"
+      />
+    </section>
   );
 }
 
@@ -369,11 +245,14 @@ function Entry({
         </div>
 
         {!released && (
-          <div className="choice">
-            <button className={cell.status === 'kept' ? 'on-kept' : ''}
-              onClick={() => set('kept')} aria-pressed={cell.status === 'kept'}>kept</button>
-            <button className={cell.status === 'broken' ? 'on-broken' : ''}
-              onClick={() => set('broken')} aria-pressed={cell.status === 'broken'}>broken</button>
+          <div className="choice-stack">
+            <div className="choice">
+              <button className={cell.status === 'kept' ? 'on-kept' : ''}
+                onClick={() => set('kept')} aria-pressed={cell.status === 'kept'}>kept</button>
+              <button className={cell.status === 'broken' ? 'on-broken' : ''}
+                onClick={() => set('broken')} aria-pressed={cell.status === 'broken'}>broken</button>
+            </div>
+            <Yesterday status={cell.yesterday} />
           </div>
         )}
       </div>
