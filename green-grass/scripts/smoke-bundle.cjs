@@ -55,8 +55,10 @@ require(path.resolve(__dirname, '..', 'dist', 'app', 'main.cjs'));
   checks.push(['serves the built frontend', res.ok && html.includes('<div id="root">')]);
 
   const standards = await (await fetch(`${loadedUrl}/api/standards`)).json();
-  checks.push(['migrations ran and seeded 10 standards', standards.length === 10]);
+  checks.push(['migrations ran and seeded the standards', standards.length >= 10]);
   checks.push(['the wake-up leads', standards[0].name === 'Wake by 09:00']);
+  checks.push(['the objectives are among them, priced higher',
+    standards.some((s) => s.name === 'Primary objective' && s.points > 10)]);
 
   const dbFile = path.join(userData, 'rule.db');
   checks.push(['database written to userData', fs.existsSync(dbFile)]);

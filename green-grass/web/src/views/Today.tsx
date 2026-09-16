@@ -72,12 +72,14 @@ export default function Today({
   );
 }
 
-/** What yesterday did with this same row, sat under today's choice. */
+/**
+ * What yesterday did with this same row. Silent when yesterday has nothing to
+ * say about it — a marker on every line is noise, not information.
+ */
 function Yesterday({ status }: { status: CellStatus | null }) {
-  if (status === null) return <span className="yday none">not asked yesterday</span>;
   if (status === 'kept') return <span className="yday kept">yesterday · kept</span>;
   if (status === 'broken') return <span className="yday missed">yesterday · broken</span>;
-  return <span className="yday none">yesterday · not filled in</span>;
+  return null;
 }
 
 /** The 1%: written the night before, ticked that day, gone after it. */

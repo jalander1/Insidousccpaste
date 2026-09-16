@@ -20,7 +20,10 @@ await build({
   logLevel: 'info',
 });
 
+// Clear it first: a migration deleted from source must not linger here and
+// keep shipping. Stale build output is a bug waiting for a bad afternoon.
 const migrationsOut = path.join(outDir, 'migrations');
+fs.rmSync(migrationsOut, { recursive: true, force: true });
 fs.mkdirSync(migrationsOut, { recursive: true });
 for (const f of fs.readdirSync(path.join(root, 'server', 'src', 'migrations'))) {
   if (f.endsWith('.sql')) {
