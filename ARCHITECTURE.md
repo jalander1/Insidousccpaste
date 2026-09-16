@@ -65,6 +65,8 @@ Three insights drive the schema; get these right and everything else is CRUD.
 
 A standard (e.g., "Evening sit — 30 minutes") has a definition that changes over time. Historical marks must stay attached to the definition that was in force **on that date**, or months of data become uninterpretable. So standards are stored as versioned rows with `effective_from` / `effective_to` dates. Editing a standard from the UI closes the current version (sets `effective_to` = yesterday) and opens a new one — it never mutates history. Deleting = "retiring" (set `effective_to`), never a SQL DELETE.
 
+**One version in force per lineage.** Enforced in SQL (`standard_one_open`, a unique index on `lineage_id` where `effective_to IS NULL`), because the failure mode is silent: the list is keyed by lineage, so a second live row on the same lineage makes one of the pair stop being drawn rather than raise anything. That is how the Secondary objective disappeared — migration 009 introduced the objectives at fixed lineage ids (11, 12, 13) while `createStandard` hands out `MAX(lineage_id) + 1`, so a standard added by hand beforehand had already taken one of them. A migration that seeds a standard must not choose its own lineage id.
+
 ### 4.2 Days have *types*, and the schedule resolves against the day type
 
 The owner's week is not uniform:

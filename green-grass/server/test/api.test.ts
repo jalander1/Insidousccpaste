@@ -286,3 +286,44 @@ test('the CSV export writes one honest row per standard per day', () => {
   assert.ok(lines.some((l) => l.startsWith(`${MON},Mon,`)));
   db.close();
 });
+
+test('the objectives read straight after the morning routine', () => {
+  const { db } = tempDb();
+  const names = store.currentStandards(db).map((s) => s.name);
+  assert.deepEqual(names.slice(0, 5), [
+    'Wake by 09:00',
+    'Morning routine',
+    'Primary objective',
+    'Secondary objective',
+    'Tertiary objective',
+  ]);
+  // The order is dense, so the numbers down the Manage list run 1, 2, 3…
+  assert.deepEqual(
+    store.currentStandards(db).map((s) => s.displayOrder),
+    Array.from({ length: names.length }, (_, i) => i + 1),
+  );
+});
+
+test('a lineage can only ever have one version in force', () => {
+  const { db } = tempDb();
+  const primary = byName(store.currentStandards(db), 'Primary objective');
+
+  // The bug this guards: a second live row on the same lineage made one of
+  // the pair disappear from the list instead of raising anything.
+  assert.throws(
+    () => db.prepare(
+      `INSERT INTO standard (lineage_id, display_order, name, definition, kind,
+         weekdays, points, effective_from)
+       VALUES (?, 99, 'Impostor', '', 'binary', 'MTWTFSS', 10, '2000-01-01')`,
+    ).run(primary.lineageId),
+    /UNIQUE/,
+  );
+
+  // Versioning still works: an edit closes one version and opens the next.
+  store.updateStandard(db, primary.lineageId, { name: 'Primary objective — the one that counts' });
+  const versions = store.allVersions(db).filter((v) => v.lineageId === primary.lineageId);
+  assert.ok(versions.length >= 1);
+  assert.equal(
+    store.currentStandards(db).filter((s) => s.lineageId === primary.lineageId).length, 1,
+  );
+});
