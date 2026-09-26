@@ -1,4 +1,4 @@
-import type { DayView, StandardVersion, TrendsView, WeekView } from '../../shared/types.js';
+import type { DayView, StandardVersion } from '../../shared/types.js';
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -29,11 +29,6 @@ export const api = {
   onePercent: (date: string, f: { text?: string; status?: string }) =>
     put<DayView>(`/api/one-percent/${date}`, f),
 
-  week: (weekStart: string) => req<WeekView>(`/api/week/${weekStart}`),
-  saveWeek: (weekStart: string, review: string) =>
-    put<WeekView>(`/api/week/${weekStart}`, { review }),
-  reviews: () => req<{ weekStart: string; review: string }[]>('/api/reviews'),
-
   standards: () => req<StandardVersion[]>('/api/standards'),
   createStandard: (f: Record<string, unknown>) => post<StandardVersion>('/api/standards', f),
   updateStandard: (lineageId: number, f: Record<string, unknown>) =>
@@ -52,8 +47,6 @@ export const api = {
       body: JSON.stringify({ date, lineageId }),
       headers: { 'Content-Type': 'application/json' },
     }),
-
-  trends: (from: string, to: string) => req<TrendsView>(`/api/trends?from=${from}&to=${to}`),
 
   dataLocation: () =>
     req<{ dbPath: string; backups: string; canReveal: boolean }>('/api/data-location'),

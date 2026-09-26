@@ -7,7 +7,7 @@ import type { RoutineStep, StandardVersion } from '../../../shared/types.js';
 
 type Draft = {
   name: string; definition: string; kind: string; weekdays: string;
-  steps: { name: string; detail: string; weekdays: string | null }[];
+  steps: { name: string; detail: string; weekdays: string | null; optional: boolean }[];
 };
 
 export default function Manage() {
@@ -49,7 +49,9 @@ export default function Manage() {
               initial={{
                 name: s.name, definition: s.definition, kind: s.kind,
                 weekdays: s.weekdays,
-                steps: s.steps.map((t) => ({ name: t.name, detail: t.detail, weekdays: t.weekdays })),
+                steps: s.steps.map((t) => ({
+                  name: t.name, detail: t.detail, weekdays: t.weekdays, optional: t.optional,
+                })),
               }}
               onCancel={() => setEditing(null)}
               onSave={async (d) => {
@@ -230,6 +232,12 @@ function Editor({
                     );
                   })}
                 </div>
+                <button
+                  className={`mini${s.optional ? ' on' : ''}`}
+                  onClick={() => setStep(i, { optional: !s.optional })}
+                  aria-pressed={s.optional}
+                  title="An optional step is shown and can be ticked, but never holds the routine open"
+                >optional</button>
                 <span className="spacer" />
                 <button
                   className="mini danger"
@@ -240,7 +248,7 @@ function Editor({
           ))}
           <button
             className="mini"
-            onClick={() => setD({ ...d, steps: [...d.steps, { name: '', detail: '', weekdays: null }] })}
+            onClick={() => setD({ ...d, steps: [...d.steps, { name: '', detail: '', weekdays: null, optional: false }] })}
           >+ add step</button>
         </div>
       )}

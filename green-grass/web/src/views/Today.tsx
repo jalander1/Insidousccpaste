@@ -4,7 +4,7 @@ import { track, useDebouncedSave } from '../save.js';
 import { Failed, useLoader } from '../load.js';
 import { addDays, longDate, shortDate, toISO, trackingDate }
   from '../../../shared/dates.js';
-import type { CellStatus, DayCell, DayView } from '../../../shared/types.js';
+import type { DayCell, DayView, StreakInfo } from '../../../shared/types.js';
 
 export default function Today({
   date, setDate,
@@ -20,7 +20,6 @@ export default function Today({
   const today = toISO(new Date());
   const isTracking = date === trackingDate();
   const apply = (v: DayView | undefined) => { if (v) setDay(v); };
-  const c = day.comparison;
 
 
   return (
@@ -40,22 +39,15 @@ export default function Today({
         )}
       </div>
 
-      <div className="ledger">
-        {day.cells.map((cell, i) => (
-          <Entry key={cell.standardId} cell={cell} index={i + 1} date={date} onChange={apply} />
-        ))}
-        <OnePercentRow day={day} date={date} onChange={apply} />
-      </div>
-
-      {c.verdict && (
-        <p className={`standing ${c.verdict}`}>
-          {c.verdict === 'won' ? 'Up on yesterday'
-            : c.verdict === 'held' ? 'Level with yesterday'
-            : 'Down on yesterday'}
-          {(c.gained.length > 0 || c.dropped.length > 0) &&
-            ` · ${c.gained.length} up, ${c.dropped.length} down`}
-          {day.run > 0 && ` · ${day.run} day${day.run === 1 ? '' : 's'} held or better`}
-        </p>
+      {day.cells.length === 0 ? (
+        <p className="empty">Nothing is tracked on this date. The record starts on 27 September.</p>
+      ) : (
+        <div className="ledger">
+          {day.cells.map((cell, i) => (
+            <Entry key={cell.standardId} cell={cell} index={i + 1} date={date} onChange={apply} />
+          ))}
+          <OnePercentRow day={day} date={date} onChange={apply} />
+        </div>
       )}
 
       <Tomorrow date={date} initial={day.tomorrowOnePercent} />
@@ -75,13 +67,20 @@ export default function Today({
 }
 
 /**
- * What yesterday did with this same row. Silent when yesterday has nothing to
- * say about it — a marker on every line is noise, not information.
+ * The run on this line, and the longest it has ever been. This is the whole
+ * competition: the record is yours, and the only way past it is another day.
+ * Silent before there is anything to say.
  */
-function Yesterday({ status }: { status: CellStatus | null }) {
-  if (status === 'kept') return <span className="yday kept">yesterday · kept</span>;
-  if (status === 'broken') return <span className="yday missed">yesterday · broken</span>;
-  return null;
+function Streak({ streak }: { streak: StreakInfo }) {
+  const { current, best } = streak;
+  if (current === 0 && best === 0) return null;
+  if (current === 0) return <span className="streak">best {best}</span>;
+  const record = current >= best;
+  return (
+    <span className={`streak${record ? ' record' : ''}`}>
+      {current} in a row{record ? ' · your best' : ` · best ${best}`}
+    </span>
+  );
 }
 
 /** The 1%: written the night before, ticked that day, gone after it. */
@@ -133,9 +132,7 @@ function OnePercentRow({
                 onClick={() => set('missed')}
                 aria-pressed={onePercent.status === 'missed'}>broken</button>
             </div>
-            <Yesterday status={
-              onePercent.yesterday === 'hit' ? 'kept'
-                : onePercent.yesterday === 'missed' ? 'broken' : null} />
+            <Streak streak={onePercent.streak} />
           </div>
         )}
       </div>
@@ -226,7 +223,7 @@ function Entry({
               <button className={cell.status === 'broken' ? 'on-broken' : ''}
                 onClick={() => set('broken')} aria-pressed={cell.status === 'broken'}>broken</button>
             </div>
-            <Yesterday status={cell.yesterday} />
+            <Streak streak={cell.streak} />
           </div>
         )}
       </div>

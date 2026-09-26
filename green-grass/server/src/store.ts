@@ -1,35 +1,13 @@
 import type { DB } from './db.js';
 import {
-  addDays, mondayOf, monthOf, rangeDates, toISO, trackingDate, weekdayIndex,
-  type ISODate,
+  addDays, rangeDates, toISO, trackingDate, weekdayIndex, type ISODate,
 } from '../../shared/dates.js';
 import { checklistComplete, resolveCell, stepApplies } from '../../shared/resolve.js';
-import { computeStreaks, keptPercent, tally } from '../../shared/streaks.js';
-import {
-  rivalOf, scoreDay, STANDARD_POINTS, weekPoints,
-  type DayScore, type ObjectiveStatus,
-} from '../../shared/score.js';
-import {
-  achievedSomething, compareDays, runFromVerdicts, verdictFromLines,
-  type Comparable, type DayComparison,
-} from '../../shared/compare.js';
+import { computeStreaks } from '../../shared/streaks.js';
 import type {
-  CellStatus, DayCell, DayView, Kind, RoutineStep, StandardVersion,
-  TrendStandard, TrendsView, WeekView,
+  CellStatus, DayCell, DayView, Kind, ObjectiveStatus, RoutineStep,
+  StandardVersion, StreakInfo,
 } from '../../shared/types.js';
-
-/** One prompt per weekday, Monday first. */
-export const PROMPTS = [
-  'What did today ask of you that you did not want to give?',
-  'Where did you reach for comfort?',
-  'What did you make that will outlast today?',
-  'Who did you serve today besides yourself?',
-  'What have you been avoiding all week?',
-  'What did you learn about your own limits this week?',
-  'What is the rule for, and is it working?',
-] as const;
-
-export const promptFor = (date: ISODate) => PROMPTS[weekdayIndex(date)];
 
 const now = () => new Date().toISOString();
 
@@ -37,19 +15,20 @@ const now = () => new Date().toISOString();
 
 interface StandardRow {
   id: number; lineage_id: number; display_order: number; name: string;
-  definition: string; kind: Kind; weekdays: string; points: number;
+  definition: string; kind: Kind; weekdays: string;
   effective_from: string; effective_to: string | null;
 }
 
 interface StepRow {
   id: number; standard_id: number; step_order: number;
-  name: string; detail: string; weekdays: string | null;
+  name: string; detail: string; weekdays: string | null; optional: number;
 }
 
 function toStep(r: StepRow): RoutineStep {
   return {
     id: r.id, standardId: r.standard_id, stepOrder: r.step_order,
     name: r.name, detail: r.detail, weekdays: r.weekdays,
+    optional: !!r.optional,
   };
 }
 
@@ -57,7 +36,6 @@ function toStandard(r: StandardRow, steps: RoutineStep[]): StandardVersion {
   return {
     id: r.id, lineageId: r.lineage_id, displayOrder: r.display_order,
     name: r.name, definition: r.definition, kind: r.kind, weekdays: r.weekdays,
-    points: r.points,
     effectiveFrom: r.effective_from, effectiveTo: r.effective_to,
     steps: steps.filter((s) => s.standardId === r.id)
       .sort((a, b) => a.stepOrder - b.stepOrder),
@@ -113,19 +91,6 @@ function exemptionsFor(db: DB, date: ISODate): Map<number, string> {
 }
 
 /** The resolved rows for one date, without building the whole view. */
-function rowsOn(db: DB, date: ISODate) {
-  const exempt = exemptionsFor(db, date);
-  const marks = new Map<number, 'kept' | 'broken'>(
-    (db.prepare('SELECT standard_id, status FROM mark WHERE date = ?')
-      .all(date) as any[]).map((m) => [m.standard_id, m.status]),
-  );
-  return standardsAt(db, date).map((s) => ({
-    standard: s,
-    status: resolveCell(s, date, exempt.has(s.lineageId), marks.get(s.id)),
-    points: s.points,
-  }));
-}
-
 export function getOnePercent(db: DB, date: ISODate): { text: string; status: ObjectiveStatus } {
   const row = db.prepare('SELECT one_percent, one_percent_status FROM day WHERE date = ?')
     .get(date) as { one_percent: string; one_percent_status: ObjectiveStatus } | undefined;
@@ -143,39 +108,70 @@ export function setOnePercent(
     .run(text, status, date);
 }
 
-export function scoreFor(db: DB, date: ISODate, today = toISO(new Date())): DayScore {
-  return scoreDay(date, rowsOn(db, date), getOnePercent(db, date), date < today);
+/**
+ * The run of days kept for every standard, counted up to and including `date`,
+ * with the longest run there has ever been beside it. This is the whole game
+ * now: a number to beat, held by nobody but you.
+ *
+ * Released days are transparent — a Sunday never breaks a Monday-to-Saturday
+ * run — and a day not yet filled in does not end one either. Runs are read per
+ * lineage, so re-wording a standard keeps its history.
+ */
+export function streaksUpTo(db: DB, date: ISODate): Map<number, StreakInfo> {
+  const first = (db.prepare('SELECT MIN(effective_from) f FROM standard')
+    .get() as { f: string | null }).f;
+  const out = new Map<number, StreakInfo>();
+  if (!first) return out;
+
+  // Bounded so a long-lived record never makes opening the day slow.
+  const from = first < addDays(date, -730) ? addDays(date, -730) : first;
+  const dates = rangeDates(from, date);
+  if (dates.length === 0) return out;
+
+  const exempt = new Set<string>(
+    (db.prepare('SELECT date, lineage_id FROM exemption WHERE date BETWEEN ? AND ?')
+      .all(from, date) as any[]).map((r) => `${r.date}|${r.lineage_id}`),
+  );
+  const marks = new Map<string, 'kept' | 'broken'>(
+    (db.prepare('SELECT date, standard_id, status FROM mark WHERE date BETWEEN ? AND ?')
+      .all(from, date) as any[]).map((m) => [`${m.date}|${m.standard_id}`, m.status]),
+  );
+
+  const byLineage = new Map<number, StandardVersion[]>();
+  for (const v of allVersions(db)) {
+    if (!byLineage.has(v.lineageId)) byLineage.set(v.lineageId, []);
+    byLineage.get(v.lineageId)!.push(v);
+  }
+
+  for (const [lineageId, versions] of byLineage) {
+    const statuses: CellStatus[] = [];
+    for (const d of dates) {
+      const v = versions.find(
+        (x) => x.effectiveFrom <= d && (x.effectiveTo === null || d <= x.effectiveTo),
+      );
+      if (!v) continue;  // the standard did not exist yet, or no longer does
+      statuses.push(resolveCell(v, d, exempt.has(`${d}|${lineageId}`), marks.get(`${d}|${v.id}`)));
+    }
+    out.set(lineageId, computeStreaks(statuses));
+  }
+  return out;
 }
 
-/** Scores across a span, oldest first — what the verdicts and runs are read from. */
-export function scoresBetween(db: DB, from: ISODate, to: ISODate): DayScore[] {
-  const today = toISO(new Date());
-  return rangeDates(from, to).map((d) => scoreFor(db, d, today));
-}
-
-/** Everything on a date that can be set against the same thing yesterday. */
-export function comparablesOn(db: DB, date: ISODate): Comparable[] {
-  const items: Comparable[] = rowsOn(db, date).map((r) => ({
-    key: `standard:${r.standard.lineageId}`,
-    name: r.standard.name,
-    applicable: r.status !== 'released',
-    achieved: r.status === 'kept',
-  }));
-  const pct = getOnePercent(db, date);
-  items.push({
-    key: 'one-percent',
-    name: pct.text.trim() || 'the 1%',
-    applicable: !!pct.text.trim(),
-    achieved: pct.status === 'hit',
-  });
-  return items;
+/** The same count for the 1%, which is written fresh every night. */
+function onePercentStreak(db: DB, date: ISODate): StreakInfo {
+  const rows = db.prepare(
+    `SELECT date, one_percent, one_percent_status FROM day
+      WHERE date <= ? AND TRIM(one_percent) <> '' ORDER BY date`,
+  ).all(date) as { one_percent_status: ObjectiveStatus }[];
+  return computeStreaks(rows.map((r) =>
+    r.one_percent_status === 'hit' ? 'kept'
+      : r.one_percent_status === 'missed' ? 'broken' : 'unanswered'));
 }
 
 export function getDay(db: DB, date: ISODate): DayView {
-  const row = db.prepare('SELECT * FROM day WHERE date = ?').get(date) as
-    { note: string } | undefined;
   const standards = standardsAt(db, date);
   const exempt = exemptionsFor(db, date);
+  const streaks = streaksUpTo(db, date);
 
   const marks = new Map<number, { status: 'kept' | 'broken'; reason: string }>(
     (db.prepare('SELECT standard_id, status, reason FROM mark WHERE date = ?')
@@ -187,17 +183,9 @@ export function getDay(db: DB, date: ISODate): DayView {
       .all(date) as { step_id: number }[]).map((r) => r.step_id),
   );
 
-  // Yesterday's outcome sits on the row itself, so the comparison is read
-  // where the decision is made rather than summarised in a panel above it.
-  const rivalDay = rivalOf(scoresBetween(db, addDays(date, -14), date), date);
-  const before = new Map<number, CellStatus>(
-    rivalDay ? rowsOn(db, rivalDay.date).map((r) => [r.standard.lineageId, r.status]) : [],
-  );
-
   const cells: DayCell[] = standards.map((s) => {
     const isExempt = exempt.has(s.lineageId);
     const mark = marks.get(s.id);
-    const was = before.get(s.lineageId) ?? null;
     return {
       lineageId: s.lineageId,
       standardId: s.id,
@@ -205,9 +193,8 @@ export function getDay(db: DB, date: ISODate): DayView {
       definition: s.definition,
       kind: s.kind,
       displayOrder: s.displayOrder,
-      points: s.points,
       status: resolveCell(s, date, isExempt, mark?.status),
-      yesterday: was === 'released' ? null : was,
+      streak: streaks.get(s.lineageId) ?? { current: 0, best: 0 },
       reason: mark?.reason ?? '',
       exemptReason: isExempt ? (exempt.get(s.lineageId) || '') : null,
       steps: s.steps.map((st) => ({
@@ -218,70 +205,19 @@ export function getDay(db: DB, date: ISODate): DayView {
     };
   });
 
-  // Wide enough that a long run is never truncated by the window it is read from.
-  const history = scoresBetween(db, addDays(date, -180), date);
-  const score = history[history.length - 1];
-  const rival = rivalOf(history, date);
-
-  const comparison = compareAgainstRival(db, date, history);
-
   return {
     date,
     cells,
-    onePercent: {
-      ...getOnePercent(db, date),
-      yesterday: rivalDay
-        ? (getOnePercent(db, rivalDay.date).text.trim()
-            ? getOnePercent(db, rivalDay.date).status : null)
-        : null,
-    },
+    onePercent: { ...getOnePercent(db, date), streak: onePercentStreak(db, date) },
     tomorrowOnePercent: getOnePercent(db, addDays(date, 1)).text,
-    score,
-    comparison,
-    run: runOfDays(db, history),
   };
-}
-
-/** Today set against the last day that raced — line by line. */
-function compareAgainstRival(
-  db: DB, date: ISODate, history: DayScore[],
-): DayComparison {
-  const day = history[history.length - 1];
-  const rival = rivalOf(history, date);
-  if (!day.competes || !rival) {
-    return { rival: null, gained: [], dropped: [], level: 0, verdict: null };
-  }
-  const mine = comparablesOn(db, date);
-  const { gained, dropped, level } = compareDays(mine, comparablesOn(db, rival.date));
-  return {
-    rival: rival.date,
-    gained,
-    dropped,
-    level,
-    // A day still running is not losing; it simply has not finished.
-    verdict: day.settled
-      ? verdictFromLines(gained, dropped, achievedSomething(mine))
-      : null,
-  };
-}
-
-/** The run, read from the line-by-line verdict of each racing day. */
-function runOfDays(db: DB, history: DayScore[]): number {
-  const racing = history.filter((s) => s.competes && s.settled);
-  const verdicts = racing.map((day, i) => {
-    if (i === 0) return null;
-    const mine = comparablesOn(db, day.date);
-    const { gained, dropped } = compareDays(mine, comparablesOn(db, racing[i - 1].date));
-    return verdictFromLines(gained, dropped, achievedSomething(mine));
-  });
-  return runFromVerdicts(verdicts);
 }
 
 export function setDayFields(db: DB, date: ISODate, fields: { note?: string }): void {
   ensureDay(db, date);
   if (fields.note !== undefined) {
-    db.prepare('UPDATE day SET note = ?, prompt_answered = ? WHERE date = ?')
-      .run(fields.note, promptFor(date), date);
+    db.prepare('UPDATE day SET note = ? WHERE date = ?')
+      .run(fields.note, date);
   }
 }
 
@@ -320,8 +256,10 @@ export function setStep(db: DB, date: ISODate, stepId: number, checked: boolean)
     .get(stepId) as { standard_id: number } | undefined;
   if (!step) return;
 
-  const steps = db.prepare('SELECT id, weekdays FROM routine_step WHERE standard_id = ?')
-    .all(step.standard_id) as { id: number; weekdays: string | null }[];
+  const steps = (db.prepare(
+    'SELECT id, weekdays, optional FROM routine_step WHERE standard_id = ?',
+  ).all(step.standard_id) as { id: number; weekdays: string | null; optional: number }[])
+    .map((r) => ({ ...r, optional: !!r.optional }));
   const done = new Set<number>(
     (db.prepare('SELECT step_id FROM step_check WHERE date = ? AND checked = 1')
       .all(date) as { step_id: number }[]).map((r) => r.step_id),
@@ -332,202 +270,6 @@ export function setStep(db: DB, date: ISODate, stepId: number, checked: boolean)
 
   if (complete) setMark(db, date, step.standard_id, 'kept', '');
   else if (current?.status === 'kept') setMark(db, date, step.standard_id, 'unanswered', '');
-}
-
-// --------------------------------------------------------------------- week
-
-export function getWeek(db: DB, weekStart: ISODate): WeekView {
-  const dates = rangeDates(weekStart, addDays(weekStart, 6));
-  const today = toISO(new Date());
-
-  // Resolve every date independently so a mid-week edit to a standard shows
-  // the definition that was actually in force on each day.
-  const perDate = dates.map((date) => ({
-    date,
-    standards: standardsAt(db, date),
-    exempt: exemptionsFor(db, date),
-    marks: new Map<number, { status: 'kept' | 'broken'; reason: string }>(
-      (db.prepare('SELECT standard_id, status, reason FROM mark WHERE date = ?')
-        .all(date) as any[]).map((m) => [m.standard_id, { status: m.status, reason: m.reason }]),
-    ),
-  }));
-
-  const lineages = new Map<number, { name: string; definition: string; kind: Kind; order: number }>();
-  for (const d of perDate) {
-    for (const s of d.standards) {
-      lineages.set(s.lineageId, {
-        name: s.name, definition: s.definition, kind: s.kind, order: s.displayOrder,
-      });
-    }
-  }
-
-  const rows = [...lineages.entries()]
-    .sort((a, b) => a[1].order - b[1].order)
-    .map(([lineageId, meta]) => ({
-      lineageId,
-      name: meta.name,
-      definition: meta.definition,
-      kind: meta.kind,
-      displayOrder: meta.order,
-      cells: perDate.map((d) => {
-        const s = d.standards.find((x) => x.lineageId === lineageId);
-        if (!s) {
-          // The standard did not exist on this date — released, honestly.
-          return { date: d.date, standardId: null, status: 'released' as CellStatus, reason: '' };
-        }
-        const mark = d.marks.get(s.id);
-        return {
-          date: d.date,
-          standardId: s.id,
-          status: resolveCell(s, d.date, d.exempt.has(lineageId), mark?.status),
-          reason: mark?.reason ?? '',
-        };
-      }),
-    }));
-
-  const week = db.prepare('SELECT review FROM week WHERE week_start = ?')
-    .get(weekStart) as { review: string } | undefined;
-
-  return {
-    weekStart,
-    review: week?.review ?? '',
-    ...weekRace(db, weekStart),
-    days: perDate.map((d) => ({ date: d.date, isToday: d.date === today })),
-    rows,
-    tally: tally(rows.flatMap((r) => r.cells.map((c) => c.status))),
-  };
-}
-
-/** The week's written reflection — the place for what a grid cannot hold. */
-export function setWeekReview(db: DB, weekStart: ISODate, review: string): void {
-  db.prepare('INSERT OR IGNORE INTO week (week_start) VALUES (?)').run(weekStart);
-  db.prepare('UPDATE week SET review = ? WHERE week_start = ?').run(review, weekStart);
-}
-
-/** Every week he has written something about, newest first. */
-export function listReviews(db: DB) {
-  return db.prepare(
-    `SELECT week_start AS weekStart, review FROM week
-      WHERE review <> '' ORDER BY week_start DESC`).all();
-}
-
-/**
- * A week in progress is compared like for like: this week so far against last
- * week to the same point. Racing four days against a finished seven would read
- * as hopelessly behind every Monday.
- */
-function weekRace(db: DB, weekStart: ISODate) {
-  const today = toISO(new Date());
-  const current = today >= weekStart && today <= addDays(weekStart, 6);
-  const through = current ? weekdayIndex(today) : 6;
-  return {
-    points: weekPoints(scoresBetween(db, weekStart, addDays(weekStart, through))),
-    lastWeekPoints: weekPoints(
-      scoresBetween(db, addDays(weekStart, -7), addDays(weekStart, through - 7))),
-    partial: current,
-  };
-}
-
-// ------------------------------------------------------------------- trends
-
-export function getTrends(db: DB, from: ISODate, to: ISODate): TrendsView {
-  const dates = rangeDates(from, to);
-
-  // Pull everything once; per-date queries across months get slow fast.
-  const exemptions = new Set<string>(
-    (db.prepare('SELECT date, lineage_id FROM exemption WHERE date BETWEEN ? AND ?')
-      .all(from, to) as any[]).map((r) => `${r.date}|${r.lineage_id}`),
-  );
-  const marks = new Map<string, { status: 'kept' | 'broken'; reason: string }>(
-    (db.prepare('SELECT date, standard_id, status, reason FROM mark WHERE date BETWEEN ? AND ?')
-      .all(from, to) as any[]).map((m) => [`${m.date}|${m.standard_id}`,
-      { status: m.status, reason: m.reason }]),
-  );
-  const checks = new Set<string>(
-    (db.prepare(`SELECT date, step_id FROM step_check
-                  WHERE date BETWEEN ? AND ? AND checked = 1`)
-      .all(from, to) as any[]).map((r) => `${r.date}|${r.step_id}`),
-  );
-
-  const byLineage = new Map<number, StandardVersion[]>();
-  for (const v of allVersions(db)) {
-    if (!byLineage.has(v.lineageId)) byLineage.set(v.lineageId, []);
-    byLineage.get(v.lineageId)!.push(v);
-  }
-
-  const standards: TrendStandard[] = [];
-
-  for (const [lineageId, vs] of byLineage) {
-    const inRange = vs.filter(
-      (v) => v.effectiveFrom <= to && (v.effectiveTo === null || v.effectiveTo >= from),
-    );
-    if (inRange.length === 0) continue;
-    const latest = vs[vs.length - 1];
-
-    const statuses: CellStatus[] = [];
-    const heatmap: { date: ISODate; status: CellStatus }[] = [];
-    const reasons: { date: ISODate; reason: string }[] = [];
-    const weekMap = new Map<ISODate, CellStatus[]>();
-    const monthMap = new Map<string, CellStatus[]>();
-    const stepStats = new Map<string, { stepId: number; missed: number; total: number }>();
-
-    for (const date of dates) {
-      const v = inRange.find(
-        (x) => x.effectiveFrom <= date && (x.effectiveTo === null || date <= x.effectiveTo),
-      );
-      if (!v) continue;
-      const mark = marks.get(`${date}|${v.id}`);
-      const status = resolveCell(v, date, exemptions.has(`${date}|${lineageId}`), mark?.status);
-
-      statuses.push(status);
-      heatmap.push({ date, status });
-      if (status === 'broken' && mark?.reason) reasons.push({ date, reason: mark.reason });
-
-      const wk = mondayOf(date);
-      if (!weekMap.has(wk)) weekMap.set(wk, []);
-      weekMap.get(wk)!.push(status);
-      const mo = monthOf(date);
-      if (!monthMap.has(mo)) monthMap.set(mo, []);
-      monthMap.get(mo)!.push(status);
-
-      // Which step breaks the routine? Grouped by name so it survives versioning.
-      if (v.kind === 'checklist' && status !== 'released') {
-        for (const st of v.steps) {
-          if (!stepApplies(st, date)) continue;
-          const cur = stepStats.get(st.name) ?? { stepId: st.id, missed: 0, total: 0 };
-          cur.total++;
-          if (!checks.has(`${date}|${st.id}`)) cur.missed++;
-          stepStats.set(st.name, cur);
-        }
-      }
-    }
-
-    const counts = tally(statuses);
-    const bucket = (m: Map<any, CellStatus[]>) =>
-      [...m.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-        .map(([k, s]) => {
-          const t = tally(s);
-          return { key: k, kept: t.kept, broken: t.broken, percent: keptPercent(t.kept, t.broken) };
-        });
-
-    standards.push({
-      lineageId,
-      name: latest.name,
-      kind: latest.kind,
-      displayOrder: latest.displayOrder,
-      ...counts,
-      percent: keptPercent(counts.kept, counts.broken),
-      streak: computeStreaks(statuses),
-      byWeek: bucket(weekMap).map(({ key, ...r }) => ({ weekStart: key as ISODate, ...r })),
-      byMonth: bucket(monthMap).map(({ key, ...r }) => ({ month: key as string, ...r })),
-      heatmap,
-      steps: [...stepStats.entries()].map(([name, s]) => ({ name, ...s })),
-      reasons: reasons.reverse(),
-    });
-  }
-
-  standards.sort((a, b) => a.displayOrder - b.displayOrder);
-  return { from, to, standards };
 }
 
 // ------------------------------------------------------- standards: editing
@@ -541,8 +283,7 @@ export function updateStandard(
   db: DB, lineageId: number,
   fields: {
     name?: string; definition?: string; kind?: Kind; weekdays?: string;
-    points?: number;
-    steps?: { name: string; detail: string; weekdays: string | null }[];
+    steps?: { name: string; detail: string; weekdays: string | null; optional?: boolean }[];
   },
 ): StandardVersion | null {
   const cur = db.prepare(
@@ -559,17 +300,19 @@ export function updateStandard(
     definition: fields.definition ?? cur.definition,
     kind: fields.kind ?? cur.kind,
     weekdays: fields.weekdays ?? cur.weekdays,
-    points: fields.points ?? cur.points,
   };
   const nextSteps = fields.steps
-    ?? steps.map((s) => ({ name: s.name, detail: s.detail, weekdays: s.weekdays }));
+    ?? steps.map((s) => ({
+      name: s.name, detail: s.detail, weekdays: s.weekdays, optional: !!s.optional,
+    }));
 
   const unchanged =
     next.name === cur.name && next.definition === cur.definition &&
     next.kind === cur.kind && next.weekdays === cur.weekdays &&
-    next.points === cur.points &&
     JSON.stringify(nextSteps) === JSON.stringify(
-      steps.map((s) => ({ name: s.name, detail: s.detail, weekdays: s.weekdays })));
+      steps.map((s) => ({
+        name: s.name, detail: s.detail, weekdays: s.weekdays, optional: !!s.optional,
+      })));
   if (unchanged) return currentStandards(db).find((s) => s.lineageId === lineageId) ?? null;
 
   db.transaction(() => {
@@ -578,9 +321,8 @@ export function updateStandard(
     // Safe for marks either way — they point at this same row.
     if (cur.effective_from >= trackingDate()) {
       db.prepare(
-        `UPDATE standard SET name=?, definition=?, kind=?, weekdays=?, points=?
-          WHERE id=?`,
-      ).run(next.name, next.definition, next.kind, next.weekdays, next.points, cur.id);
+        `UPDATE standard SET name=?, definition=?, kind=?, weekdays=? WHERE id=?`,
+      ).run(next.name, next.definition, next.kind, next.weekdays, cur.id);
       replaceSteps(db, cur.id, nextSteps);
       return;
     }
@@ -588,9 +330,9 @@ export function updateStandard(
       .run(addDays(today, -1), cur.id);
     const info = db.prepare(
       `INSERT INTO standard (lineage_id, display_order, name, definition, kind,
-         weekdays, points, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         weekdays, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).run(lineageId, cur.display_order, next.name, next.definition, next.kind,
-      next.weekdays, next.points, today);
+      next.weekdays, today);
     replaceSteps(db, Number(info.lastInsertRowid), nextSteps);
   })();
 
@@ -599,21 +341,22 @@ export function updateStandard(
 
 function replaceSteps(
   db: DB, standardId: number,
-  steps: { name: string; detail: string; weekdays: string | null }[],
+  steps: { name: string; detail: string; weekdays: string | null; optional?: boolean }[],
 ): void {
   db.prepare('DELETE FROM routine_step WHERE standard_id = ?').run(standardId);
   const ins = db.prepare(
-    'INSERT INTO routine_step (standard_id, step_order, name, detail, weekdays) VALUES (?,?,?,?,?)',
+    `INSERT INTO routine_step (standard_id, step_order, name, detail, weekdays, optional)
+     VALUES (?,?,?,?,?,?)`,
   );
-  steps.forEach((s, i) => ins.run(standardId, i + 1, s.name, s.detail, s.weekdays));
+  steps.forEach((s, i) =>
+    ins.run(standardId, i + 1, s.name, s.detail, s.weekdays, s.optional ? 1 : 0));
 }
 
 export function createStandard(
   db: DB,
   f: {
     name: string; definition?: string; kind?: Kind; weekdays?: string;
-    points?: number;
-    steps?: { name: string; detail: string; weekdays: string | null }[];
+    steps?: { name: string; detail: string; weekdays: string | null; optional?: boolean }[];
   },
 ): StandardVersion {
   // A new standard starts on the day you are currently filling in, so it shows
@@ -627,9 +370,9 @@ export function createStandard(
   db.transaction(() => {
     const info = db.prepare(
       `INSERT INTO standard (lineage_id, display_order, name, definition, kind,
-         weekdays, points, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         weekdays, effective_from) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).run(lineageId, max.d + 1, f.name, f.definition ?? '', f.kind ?? 'binary',
-      f.weekdays ?? 'MTWTFSS', f.points ?? STANDARD_POINTS, start);
+      f.weekdays ?? 'MTWTFSS', start);
     if (f.steps?.length) replaceSteps(db, Number(info.lastInsertRowid), f.steps);
   })();
   return currentStandards(db).find((s) => s.lineageId === lineageId)!;

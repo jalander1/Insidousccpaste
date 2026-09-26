@@ -54,13 +54,17 @@ export function resolveCell(
  * A checklist is kept once every step that applies today is checked. Partial
  * completion is not auto-broken — you may still be mid-routine — but the step
  * data records exactly which step slipped.
+ *
+ * An optional step is shown and can be ticked, but it never holds the routine
+ * open: a full exercise session on top of the non-negotiable set is a bonus,
+ * not a condition.
  */
 export function checklistComplete(
-  steps: Pick<RoutineStep, 'id' | 'weekdays'>[],
+  steps: Pick<RoutineStep, 'id' | 'weekdays' | 'optional'>[],
   date: ISODate,
   checked: ReadonlySet<number>,
 ): boolean {
-  const applicable = steps.filter((s) => stepApplies(s, date));
-  if (applicable.length === 0) return false;
-  return applicable.every((s) => checked.has(s.id));
+  const required = steps.filter((s) => !s.optional && stepApplies(s, date));
+  if (required.length === 0) return false;
+  return required.every((s) => checked.has(s.id));
 }

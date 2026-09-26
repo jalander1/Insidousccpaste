@@ -3,11 +3,9 @@ import { api } from './api.js';
 import { useSavedFlash } from './save.js';
 import { trackingDate } from '../../shared/dates.js';
 import Today from './views/Today.js';
-import Week from './views/Week.js';
-import Trends from './views/Trends.js';
 import Manage from './views/Manage.js';
 
-const TABS = ['Today', 'Week', 'Trends', 'Manage'] as const;
+const TABS = ['Today', 'Manage'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function App() {
@@ -46,10 +44,6 @@ export default function App() {
 
       {!ready ? null : tab === 'Today' ? (
         <Today date={date} setDate={setDate} />
-      ) : tab === 'Week' ? (
-        <Week date={date} setDate={setDate} onOpenDay={(d) => { setDate(d); setTab('Today'); }} />
-      ) : tab === 'Trends' ? (
-        <Trends />
       ) : (
         <Manage />
       )}

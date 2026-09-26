@@ -49,9 +49,9 @@ test('steps can carry their own weekday mask', () => {
 
 test('a checklist is kept when every applicable step is checked', () => {
   const steps = [
-    { id: 1, weekdays: null },
-    { id: 2, weekdays: 'MTWTF--' }, // weekdays only
-    { id: 3, weekdays: null },
+    { id: 1, weekdays: null, optional: false },
+    { id: 2, weekdays: 'MTWTF--', optional: false }, // weekdays only
+    { id: 3, weekdays: null, optional: false },
   ];
   assert.equal(checklistComplete(steps, MON, new Set([1, 3])), false);
   assert.equal(checklistComplete(steps, MON, new Set([1, 2, 3])), true);
@@ -69,4 +69,22 @@ test('the version in force is the one that was true that day', () => {
   assert.equal(versionInForce(versions, '2026-08-25')?.label, 'one hour');
   assert.equal(versionInForce(versions, '2026-08-26')?.label, 'thirty minutes');
   assert.equal(versionInForce(versions, '1999-01-01'), undefined);
+});
+
+test('an optional step is shown but never holds the routine open', () => {
+  const steps = [
+    { id: 1, weekdays: null, optional: false },
+    { id: 2, weekdays: null, optional: true },   // the full exercise session
+    { id: 3, weekdays: null, optional: false },
+  ];
+  assert.equal(checklistComplete(steps, MON, new Set([1, 3])), true,
+    'the non-negotiables are enough');
+  assert.equal(checklistComplete(steps, MON, new Set([1, 2, 3])), true,
+    'and the bonus does not change that');
+  assert.equal(checklistComplete(steps, MON, new Set([1, 2])), false,
+    'but it cannot stand in for one of them');
+
+  // A routine of nothing but optional steps is never automatically kept.
+  assert.equal(checklistComplete([{ id: 9, weekdays: null, optional: true }], MON, new Set([9])),
+    false);
 });

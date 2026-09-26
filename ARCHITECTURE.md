@@ -65,7 +65,15 @@ Three insights drive the schema; get these right and everything else is CRUD.
 
 A standard (e.g., "Evening sit — 30 minutes") has a definition that changes over time. Historical marks must stay attached to the definition that was in force **on that date**, or months of data become uninterpretable. So standards are stored as versioned rows with `effective_from` / `effective_to` dates. Editing a standard from the UI closes the current version (sets `effective_to` = yesterday) and opens a new one — it never mutates history. Deleting = "retiring" (set `effective_to`), never a SQL DELETE.
 
-**One version in force per lineage.** Enforced in SQL (`standard_one_open`, a unique index on `lineage_id` where `effective_to IS NULL`), because the failure mode is silent: the list is keyed by lineage, so a second live row on the same lineage makes one of the pair stop being drawn rather than raise anything. That is how the Secondary objective disappeared — migration 009 introduced the objectives at fixed lineage ids (11, 12, 13) while `createStandard` hands out `MAX(lineage_id) + 1`, so a standard added by hand beforehand had already taken one of them. A migration that seeds a standard must not choose its own lineage id. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
+**One version in force per lineage.** Enforced in SQL (`standard_one_open`, a unique index on `lineage_id` where `effective_to IS NULL`), because the failure mode is silent: the list is keyed by lineage, so a second live row on the same lineage makes one of the pair stop being drawn rather than raise anything. That is how the Secondary objective disappeared — migration 009 introduced the objectives at fixed lineage ids (11, 12, 13) while `createStandard` hands out `MAX(lineage_id) + 1`, so a standard added by hand beforehand had already taken one of them. A migration that seeds a standard must not choose its own lineage id.
+
+**The record was reset on 27 September 2026** (migration `012_reset`), down to
+eleven standards and two screens. The Week grid, the Trends screen and the
+points that only paid out in the Week are gone — none were looked at, and a
+tracker nobody reads is worse than none. What replaced the daily verdict is one
+number per line: the run you are on, and the longest it has ever been. The
+competition is with your own record. A routine step can now be marked optional:
+shown and tickable, but it never holds the routine open. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
 
 ### 4.2 Days have *types*, and the schedule resolves against the day type
 

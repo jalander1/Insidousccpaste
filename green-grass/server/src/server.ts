@@ -70,17 +70,6 @@ export function createApp(db: DB, opts: ServerOptions) {
     return store.getDay(db, req.params.date);
   }));
 
-  app.get('/api/week/:weekStart', wrap((req) =>
-    store.getWeek(db, mondayOf(req.params.weekStart))));
-
-  app.put('/api/week/:weekStart', wrap((req) => {
-    const ws = mondayOf(req.params.weekStart);
-    store.setWeekReview(db, ws, String(req.body?.review ?? ''));
-    return store.getWeek(db, ws);
-  }));
-
-  app.get('/api/reviews', wrap(() => store.listReviews(db)));
-
   // ------------------------------------------------------------- standards
   app.get('/api/standards', wrap(() => store.currentStandards(db)));
   app.post('/api/standards', wrap((req) => store.createStandard(db, req.body)));
@@ -106,13 +95,6 @@ export function createApp(db: DB, opts: ServerOptions) {
     const { date, lineageId } = req.body ?? {};
     store.clearExemption(db, date, Number(lineageId));
     return store.getDay(db, date);
-  }));
-
-  // ---------------------------------------------------------------- trends
-  app.get('/api/trends', wrap((req) => {
-    const to = (req.query.to as string) || toISO(new Date());
-    const from = (req.query.from as string) || addDays(to, -180);
-    return store.getTrends(db, from, to);
   }));
 
   // ---------------------------------------------------------------- export

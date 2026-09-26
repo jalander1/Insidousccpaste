@@ -91,62 +91,47 @@ days are never locked — honesty over ceremony.
 | **unanswered** | empty square, not yet filled in |
 | **released** | a dot: not asked of you that day, and left out of the counting |
 
-Sunday releases the Monday–Saturday standards — the wake-up, content
-creation, reading, no TV. The routines and the abstains run every day. So does
-an exception you set yourself.
+Sunday releases the Monday–Saturday standards — the wake-up and no TV — and
+Saturday is the only day the weekly review is asked. The routines, the
+objectives and the rest of the abstains run every day. So does an exception you
+set yourself.
 
 Steps within a routine can be released too, so only tonight's steps are shown:
-Friday and Saturday are the late shifts, so the phone may stay in the room and
-a podcast stands in for the book. Ticking what applies is enough to keep the
+Friday and Saturday are the late shifts, so a podcast stands in for the book —
+off the Alexa, so the phone still goes to the study and nothing digital comes
+up to the room. Ticking what applies is enough to keep the
 routine. A released day never breaks a streak and never counts against a
 percentage. An unanswered day is not counted as a failure either — it is simply
 not evidence.
 
-### The day: against yesterday, on every row
+### The day: your own record to beat
 
-Each row carries what yesterday did with it — *yesterday · kept*, *yesterday ·
-broken* — so the comparison sits where the decision is made. Once the day is
-filled in, one line beneath the ledger says where it landed and how long the
-run is. Nothing appears there while the day is still running: a verdict on a
-day that has not happened yet is worth nothing.
+Each row carries the run it is on and the longest that run has ever been:
+*7 in a row · best 13*. When the run equals the record, the line says **your
+best** and turns brass, because from there every day is a new one.
 
-More lines up than down and you won; more down and you lost; **equal and you
-held**, which keeps the run alive. Holding has to count: once you are running
-clean there is nothing left to beat.
-
-Only rows both days actually asked for are compared, so a released standard can
-neither cost you nor flatter you. **A day that put nothing on the board is a
-loss**, whatever it is compared against — you can go back and fill a day in
-whenever you like, but a day left blank stays lost. **Sunday does not race**; the run steps over it and
-Monday takes on the Saturday.
+The competition is with yourself and nobody else. A released day is
+transparent — a Sunday never breaks a Monday-to-Saturday run — and a day you
+have not sat down to fill in yet does not break one either. Only a day you
+actually marked broken ends a run.
 
 ### Objectives and the 1%
 
 **The objectives are three more rows in the same ledger**, because hitting them
 is itself a standard. There is nothing to type: the tasks live in your notepad,
-and the app only wants to know whether you hit them. They are priced above an
-ordinary standard, because they are what actually moves you forward.
+and the app only wants to know whether you hit them.
 
 **The 1% is written the night before** — there is a field for tomorrow's at the
 bottom of today — and it appears the next day as its own row, with its text, to
-be kept or broken. After that day it is history; you write a new one.
-
-### The week: points
-
-Points are the week's currency, not the day's. Every standard carries its own
-price: ten for an ordinary one, twenty for the primary objective, twelve and
-eight for the second and third, ten for the 1%. A clean weekday is 90; with
-everything it is 140.
-
-The week's total is set against last week's — counted to the same day of the
-week while the week is still running, so it is a live race rather than a
-foregone conclusion every Monday.
+be kept or broken. After that day it is history; you write a new one. It keeps
+its own run, like everything else.
 
 ### Why it broke
 
 Marking something broken opens a one-line "why". That text is the point of the
-whole exercise: **Trends** collects every reason per standard into one list, so
-patterns you'd never notice day to day become obvious over months.
+whole exercise — a tally tells you that you broke a standard eleven times, and
+only the reasons tell you why. It is written where it happened, and it is there
+in the CSV export when you want to read a run of them back.
 
 ### The standards change, the history doesn't
 
@@ -167,22 +152,16 @@ app will not stop you either way.
 
 ## The screens
 
-- **Today** — the ledger. Tick each standard kept or broken, work through the
-  two routines step by step, and answer the day's prompt.
-- **Week** — the grid, seven columns, exactly as the printed sheet was, and
-  underneath it room to write about the week: why it went the way it went, what
-  was going on around it, and what you want to do about it. A grid can record
-  that you missed four days; it cannot record that you were moving flat.
-- **Trends** — the wake-up first, then every standard: streaks, kept-rate by
-  week and by month, a heatmap, which routine step slips most, every reason a
-  standard broke, and everything you have written about past weeks, collected
-  in one place to read back.
-- **Manage** — edit and reorder standards, edit routine steps, set exceptions,
-  and get at your data.
+- **Today** — the ledger, and the only screen that matters. Tick each standard
+  kept or broken, work through the two routines step by step, and read the run
+  on every line.
+- **Manage** — edit and reorder standards, edit routine steps, mark a step
+  optional, set exceptions, and get at your data.
 
-This is a standard tracker, not a goal setter. There is nowhere to write
-priorities, monthly goals or a weekly review, by design — the weekly review is a
-standard you tick on a Saturday, and where you do it is your business.
+Two screens, on purpose. There was a Week grid and a Trends screen; neither got
+looked at, so both are gone, and the points that only ever paid out in the Week
+went with them. The weekly review is a standard you tick on a Saturday, and
+where you do it is your business.
 
 ---
 

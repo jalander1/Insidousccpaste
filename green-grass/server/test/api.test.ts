@@ -10,36 +10,64 @@ import { trackingDate } from '../../shared/dates.js';
 function tempDb() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rule-test-'));
   const file = path.join(dir, 'rule.db');
-  return { db: openDatabase(file), file, dir };
+  const db = openDatabase(file);
+  // The record is seeded to start on 27 September 2026. Tests need it already
+  // lived in, so they can look at days behind them: backdate the seed rather
+  // than pin every assertion to whatever today happens to be.
+  db.prepare("UPDATE standard SET effective_from = '2026-08-01'").run();
+  return { db, file, dir };
 }
 
 // A known week: Mon 24 Aug 2026 … Sun 30 Aug 2026.
 const MON = '2026-08-24';
 const SAT = '2026-08-29';
 const SUN = '2026-08-30';
+/** The day before MON, for anything that needs a second date. */
+const PREV = '2026-08-23';
 
 const byName = <T extends { name: string }>(cells: T[], name: string): T =>
   cells.find((c) => c.name.startsWith(name))!;
 
-test('the seed is his standards, with the objectives among them', () => {
+test('the seed is the eleven standards, objectives among them', () => {
   const { db } = tempDb();
   const standards = store.currentStandards(db);
-  assert.equal(standards.length, 13, 'ten standards and the three objectives');
+  assert.equal(standards.length, 11, 'eight standards and the three objectives');
 
-  // Hitting his objectives is itself a standard, priced above the rest.
-  assert.equal(byName(standards, 'Primary objective').points, 20);
-  assert.equal(byName(standards, 'Secondary objective').points, 12);
-  assert.equal(byName(standards, 'Tertiary objective').points, 8);
-  assert.equal(byName(standards, 'Wake by').points, 10);
   assert.equal(standards[0].name, 'Wake by 09:00', 'the wake-up leads');
-  assert.equal(standards[0].weekdays, 'MTWTFS-', 'Sunday is released');
-  assert.equal(byName(standards, 'Evening routine').weekdays, 'MTWTFSS', 'every day');
+  assert.equal(standards[0].weekdays, 'MTWTFS-', 'Sunday he can sleep in');
   assert.equal(byName(standards, 'Morning routine').weekdays, 'MTWTFSS', 'every day');
+  assert.equal(byName(standards, 'Evening routine').weekdays, 'MTWTFSS', 'every day');
   assert.equal(byName(standards, 'Evening routine').steps.length, 7);
+  assert.equal(byName(standards, 'No TV').weekdays, 'MTWTFS-', 'Sunday is open');
   assert.equal(byName(standards, 'Weekly review').weekdays, '-----S-', 'Saturday only');
+
+  // Porn and ejaculation are one standard now: either one breaks it.
+  assert.equal(standards.filter((x) => /porn|ejacul/i.test(x.name)).length, 1);
+  assert.ok(byName(standards, 'No porn').definition.includes('either one breaks it'));
+
+  // The room standard is every night, because the podcast plays off the Alexa.
+  assert.equal(byName(standards, 'No digital technology').weekdays, 'MTWTFSS');
+
   // Nothing typed in: every standard is a tick.
-  assert.deepEqual([...new Set(standards.map((s) => s.kind))].sort(),
-    ['abstain', 'binary', 'checklist']);
+  assert.ok(standards.every((x) => ['binary', 'abstain', 'checklist'].includes(x.kind)));
+  db.close();
+});
+
+test('the morning routine is four non-negotiables and one bonus', () => {
+  const { db } = tempDb();
+  const morning = byName(store.currentStandards(db), 'Morning routine');
+  assert.deepEqual(morning.steps.map((s) => s.name), [
+    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate — 30 minutes',
+  ]);
+  assert.deepEqual(morning.steps.filter((s) => s.optional).map((s) => s.name),
+    ['Full exercise session']);
+  assert.ok(morning.steps.find((s) => s.name === 'Exercises')!.detail.includes('90/90s'));
+  assert.equal(morning.definition, 'No phone until the morning routine is done.');
+
+  // The bonus never holds the routine open.
+  const required = morning.steps.filter((s) => !s.optional);
+  for (const s of required) store.setStep(db, MON, s.id, true);
+  assert.equal(byName(store.getDay(db, MON).cells, 'Morning routine').status, 'kept');
   db.close();
 });
 
@@ -47,12 +75,12 @@ test('Sunday releases the Monday-to-Saturday standards and keeps the rest', () =
   const { db } = tempDb();
   const sun = store.getDay(db, SUN);
   assert.equal(byName(sun.cells, 'Wake by').status, 'released');
-  assert.equal(byName(sun.cells, 'Content creation').status, 'released');
-  assert.equal(byName(sun.cells, 'Reading').status, 'released');
   assert.equal(byName(sun.cells, 'No TV').status, 'released');
+  assert.equal(byName(sun.cells, 'Weekly review').status, 'released');
   assert.equal(byName(sun.cells, 'No porn').status, 'unanswered', 'every day, no exceptions');
+  assert.equal(byName(sun.cells, 'No digital technology').status, 'unanswered');
   assert.equal(byName(sun.cells, 'Morning routine').status, 'unanswered', 'runs every day');
-  assert.equal(byName(sun.cells, 'Instagram').status, 'unanswered');
+  assert.equal(byName(sun.cells, 'Primary objective').status, 'unanswered');
   assert.equal(byName(sun.cells, 'Evening routine').status, 'unanswered', 'runs every day');
   db.close();
 });
@@ -77,19 +105,20 @@ test('the evening routine runs every night, planning included', () => {
   db.close();
 });
 
-test('the late shifts keep the phone and swap the book for a podcast', () => {
+test('the late shifts swap the book for a podcast, phone away either way', () => {
   const { db } = tempDb();
-  // Friday and Saturday: home at one in the morning, phone stays in the room.
+  // Friday and Saturday: home at one in the morning. The podcast plays off the
+  // Alexa, so the phone still goes to the study and nothing digital comes up.
   for (const late of ['2026-08-28', SAT]) {
     const steps = tonight(db, late);
-    assert.ok(!steps.includes('Phone away downstairs'), 'the phone may stay up');
+    assert.ok(steps.includes('Phone stored away in study'), 'every night, late or not');
     assert.ok(!steps.includes('Read before bed'));
     assert.ok(steps.includes('Read or listen to a podcast'));
   }
-  // Every other night the book stands, and the phone goes downstairs.
+  // Every other night the book stands.
   for (const quiet of [MON, SUN]) {
     const steps = tonight(db, quiet);
-    assert.ok(steps.includes('Phone away downstairs'));
+    assert.ok(steps.includes('Phone stored away in study'));
     assert.ok(steps.includes('Read before bed'));
     assert.ok(!steps.includes('Read or listen to a podcast'));
   }
@@ -116,8 +145,8 @@ test('a full day can be recorded and survives a restart', () => {
     store.setMark(db, MON, cell.standardId, 'kept', '');
   }
   // One broken, with the reason that is the whole point of the exercise.
-  const insta = byName(day.cells, 'Instagram');
-  store.setMark(db, MON, insta.standardId, 'broken', 'Doom-scrolled after the shift.');
+  const tv = byName(day.cells, 'No TV');
+  store.setMark(db, MON, tv.standardId, 'broken', 'Watched two films back to back.');
 
   // Complete the morning routine step by step.
   const morning = byName(day.cells, 'Morning routine');
@@ -131,8 +160,8 @@ test('a full day can be recorded and survives a restart', () => {
 
   const view = store.getDay(again, MON);
   assert.equal(byName(view.cells, 'Wake by').status, 'kept');
-  assert.equal(byName(view.cells, 'Instagram').status, 'broken');
-  assert.equal(byName(view.cells, 'Instagram').reason, 'Doom-scrolled after the shift.');
+  assert.equal(byName(view.cells, 'No TV').status, 'broken');
+  assert.equal(byName(view.cells, 'No TV').reason, 'Watched two films back to back.');
   assert.equal(byName(view.cells, 'Morning routine').status, 'kept',
     'a completed checklist marks itself kept');
   again.close();
@@ -165,7 +194,7 @@ test('an exemption releases one standard on one day without touching the rest', 
   const cell = byName(view.cells, 'Wake by');
   assert.equal(cell.status, 'released');
   assert.equal(cell.exemptReason, 'Flight landed at 4am.');
-  assert.equal(byName(view.cells, 'Reading').status, 'unanswered', 'others untouched');
+  assert.equal(byName(view.cells, 'No TV').status, 'unanswered', 'others untouched');
 
   store.clearExemption(db, MON, wake.lineageId);
   assert.equal(byName(store.getDay(db, MON).cells, 'Wake by').status, 'unanswered');
@@ -228,50 +257,6 @@ test('retiring keeps the record but stops the asking', () => {
 
   assert.equal(store.currentStandards(db).some((s) => s.lineageId === tv.lineageId), false);
   assert.equal(byName(store.getDay(db, MON).cells, 'No TV').status, 'kept', 'history intact');
-  db.close();
-});
-
-test('trends count the reasons and find the step that slips', () => {
-  const { db } = tempDb();
-  const day = store.getDay(db, MON);
-  const insta = byName(day.cells, 'Instagram');
-  store.setMark(db, MON, insta.standardId, 'broken', 'Bored on the bus.');
-  store.setMark(db, '2026-08-25', insta.standardId, 'kept', '');
-
-  const evening = byName(day.cells, 'Evening routine');
-  // Journal every night, but never set out the outfit.
-  const journal = evening.steps.find((s) => s.name === 'Journal')!;
-  for (const d of [MON, '2026-08-25']) store.setStep(db, d, journal.id, true);
-
-  const trends = store.getTrends(db, MON, '2026-08-25');
-  const ig = trends.standards.find((s) => s.name.startsWith('Instagram'))!;
-  assert.equal(ig.kept, 1);
-  assert.equal(ig.broken, 1);
-  assert.equal(ig.percent, 50);
-  assert.deepEqual(ig.reasons.map((r) => r.reason), ['Bored on the bus.']);
-
-  const ev = trends.standards.find((s) => s.name.startsWith('Evening routine'))!;
-  const outfit = ev.steps.find((s) => s.name.startsWith('Set out'))!;
-  assert.equal(outfit.missed, 2, 'never done in the window');
-  assert.equal(ev.steps.find((s) => s.name === 'Journal')!.missed, 0);
-  db.close();
-});
-
-test('the week holds a written reflection, kept per week', () => {
-  const { db } = tempDb();
-  const words = 'Fell off badly — moving flat and it swallowed the week. '
-    + 'Back to it from Monday, starting with the wake-up.';
-  store.setWeekReview(db, MON, words);
-
-  assert.equal(store.getWeek(db, MON).review, words);
-  assert.equal(store.getWeek(db, '2026-08-31').review, '', 'the next week is its own page');
-
-  // It survives a restart, and shows up in the collected list.
-  const reviews = store.listReviews(db) as { weekStart: string; review: string }[];
-  assert.deepEqual(reviews, [{ weekStart: MON, review: words }]);
-
-  store.setWeekReview(db, MON, '');
-  assert.equal((store.listReviews(db) as any[]).length, 0, 'emptied reflections drop out');
   db.close();
 });
 
@@ -347,4 +332,59 @@ test('retiring a standard takes nothing else with it', () => {
 
   // And it is only closed, never deleted: the record it carries is still there.
   assert.ok(store.allVersions(db).some((v) => v.lineageId === sugar.lineageId));
+});
+
+test('every standard carries its run and the record to beat', () => {
+  const { db } = tempDb();
+  const tv = byName(store.getDay(db, MON).cells, 'No TV');
+
+  // Four straight, then a break, then two. Sunday sits in the middle of the
+  // second run and must not count against it — No TV is released on Sundays.
+  const kept = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13'];
+  for (const d of kept) store.setMark(db, d, tv.standardId, 'kept', '');
+  store.setMark(db, '2026-08-14', tv.standardId, 'broken', 'Film with the family.');
+  for (const d of ['2026-08-15', '2026-08-17']) store.setMark(db, d, tv.standardId, 'kept', '');
+
+  const after = byName(store.getDay(db, '2026-08-17').cells, 'No TV');
+  assert.equal(after.streak.current, 2, 'the Sunday in between is transparent');
+  assert.equal(after.streak.best, 4, 'the record still stands');
+
+  // Two more days and the record falls.
+  for (const d of ['2026-08-18', '2026-08-19', '2026-08-20']) {
+    store.setMark(db, d, tv.standardId, 'kept', '');
+  }
+  const broken = byName(store.getDay(db, '2026-08-20').cells, 'No TV');
+  assert.equal(broken.streak.current, 5);
+  assert.equal(broken.streak.best, 5, 'the run and the record are the same thing now');
+
+  // The run is read as at the day you are looking at, not as at today.
+  const midway = byName(store.getDay(db, '2026-08-13').cells, 'No TV');
+  assert.equal(midway.streak.current, 4);
+  db.close();
+});
+
+test('a day not yet filled in does not end a run', () => {
+  const { db } = tempDb();
+  const tv = byName(store.getDay(db, MON).cells, 'No TV');
+  for (const d of ['2026-08-10', '2026-08-11', '2026-08-12']) {
+    store.setMark(db, d, tv.standardId, 'kept', '');
+  }
+  // Nothing recorded on the 13th yet — sitting down to fill it in is not a break.
+  assert.equal(byName(store.getDay(db, '2026-08-13').cells, 'No TV').streak.current, 3);
+  db.close();
+});
+
+test('the 1% keeps its own run', () => {
+  const { db } = tempDb();
+  for (const d of ['2026-08-10', '2026-08-11']) {
+    store.setOnePercent(db, d, { text: 'Phone downstairs by 22:30' });
+    store.setOnePercent(db, d, { status: 'hit' });
+  }
+  const day = store.getDay(db, '2026-08-11');
+  assert.equal(day.onePercent.streak.current, 2);
+  assert.equal(day.onePercent.streak.best, 2);
+
+  // A night with nothing written is not a night it was missed.
+  assert.equal(store.getDay(db, '2026-08-12').onePercent.streak.current, 2);
+  db.close();
 });

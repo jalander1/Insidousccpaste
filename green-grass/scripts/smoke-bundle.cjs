@@ -55,23 +55,37 @@ require(path.resolve(__dirname, '..', 'dist', 'app', 'main.cjs'));
   checks.push(['serves the built frontend', res.ok && html.includes('<div id="root">')]);
 
   const standards = await (await fetch(`${loadedUrl}/api/standards`)).json();
-  checks.push(['migrations ran and seeded the standards', standards.length >= 10]);
+  checks.push(['migrations ran and seeded the standards', standards.length === 11]);
   checks.push(['the wake-up leads', standards[0].name === 'Wake by 09:00']);
-  checks.push(['the objectives are among them, priced higher',
-    standards.some((s) => s.name === 'Primary objective' && s.points > 10)]);
+  checks.push(['the objectives read after the morning routine',
+    standards.slice(1, 5).map((s) => s.name).join('|')
+      === 'Morning routine|Primary objective|Secondary objective|Tertiary objective']);
+  checks.push(['the full exercise session is the one optional step',
+    standards[1].steps.filter((s) => s.optional).map((s) => s.name).join() === 'Full exercise session']);
 
   const dbFile = path.join(userData, 'rule.db');
   checks.push(['database written to userData', fs.existsSync(dbFile)]);
 
-  // A write, then a read back through the API.
-  const today = (await (await fetch(`${loadedUrl}/api/today`)).json()).trackingDate;
-  await fetch(`${loadedUrl}/api/mark/${today}/${standards[0].id}`, {
+  // A write, then a read back through the API. The record starts on a fixed
+  // day, so mark the first date it actually covers rather than today's.
+  const tracking = (await (await fetch(`${loadedUrl}/api/today`)).json()).trackingDate;
+  const today = tracking > standards[0].effectiveFrom ? tracking : standards[0].effectiveFrom;
+  // The objectives run every day, so this holds whichever day the record opens on.
+  const daily = standards.find((s) => s.name === 'Primary objective');
+  await fetch(`${loadedUrl}/api/mark/${today}/${daily.id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status: 'kept', reason: '' }),
   });
   const day = await (await fetch(`${loadedUrl}/api/day/${today}`)).json();
-  checks.push(['a mark round-trips', day.cells[0].status === 'kept']);
+  const marked = day.cells.find((c) => c.name === 'Primary objective');
+  checks.push(['a mark round-trips', marked.status === 'kept']);
+  checks.push(['and starts a run of one', marked.streak.current === 1]);
+
+  // Week and trends are gone: their paths now fall through to the SPA.
+  const gone = await Promise.all([`/api/trends?from=${today}&to=${today}`, `/api/week/${today}`]
+    .map(async (u) => (await fetch(loadedUrl + u)).headers.get('content-type') || ''));
+  checks.push(['the week and trends are gone', gone.every((t) => !t.includes('json'))]);
 
   let failed = 0;
   for (const [name, ok] of checks) {
