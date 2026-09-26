@@ -29,9 +29,43 @@ export function openDatabase(dbPath: string, migrationsDir?: string): DB {
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
-  if (existed) backup(dbPath);
+  if (existed) {
+    backup(dbPath);
+    archiveBeforeReset(db, dbPath, migrationsDir);
+  }
   migrate(db, migrationsDir);
   return db;
+}
+
+/**
+ * A migration that wipes the record gets its own archive, named so it is
+ * obvious what it is. The daily backup already ran, but a backup you have to
+ * know the date of is not much use to someone looking for the record they had
+ * before the reset.
+ */
+function archiveBeforeReset(db: DB, dbPath: string, migrationsDir?: string): void {
+  try {
+    const dir = resolveMigrations(migrationsDir);
+    const applied = new Set<string>(
+      (db.prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'`,
+      ).get()
+        ? db.prepare('SELECT name FROM migrations').all().map((r: any) => r.name)
+        : []) as string[],
+    );
+    const resetting = fs.readdirSync(dir)
+      .filter((f) => f.endsWith('.sql') && f.includes('reset') && !applied.has(f));
+    if (resetting.length === 0) return;
+
+    const out = path.join(path.dirname(dbPath), 'backups',
+      `rule-before-reset-${toISO(new Date())}.db`);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    if (!fs.existsSync(out)) fs.copyFileSync(dbPath, out);
+    console.log(`Archived the record before resetting it: ${out}`);
+  } catch (err) {
+    // Never block the app from opening over an archive.
+    console.error('Could not archive before the reset:', err);
+  }
 }
 
 export function migrate(db: DB, migrationsDir?: string): void {
