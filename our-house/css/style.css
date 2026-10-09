@@ -82,18 +82,19 @@ button { font: inherit; color: inherit; }
 .insta svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .insta .dot { fill: currentColor; stroke: none; }
 
-/* Hero: logo on cream */
-.hero { padding: clamp(56px, 12vw, 120px) 24px clamp(64px, 10vw, 110px); text-align: center; border-bottom: 1px solid var(--line); }
-.hero-logo { width: min(560px, 100%); margin: 0 auto; color: var(--oxblood); }
-.hero-logo svg { display: block; width: 100%; height: auto; }
-.script { font-family: var(--script); font-size: clamp(44px, 11vw, 80px); line-height: 1.1; color: var(--ink); margin: clamp(36px, 7vw, 56px) 0 0; transform: rotate(-4deg); }
-.hero-links { display: flex; justify-content: center; gap: clamp(56px, 16vw, 120px); margin-top: clamp(32px, 6vw, 48px); }
-.hero-links a { font-size: clamp(28px, 6vw, 36px); font-style: italic; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 8px; }
+/* Hero: full photo, script word, two links */
+.hero { position: relative; height: min(82svh, 760px); min-height: 520px; display: grid; place-items: center; overflow: hidden; color: var(--cream); text-align: center; border-bottom: 1px solid var(--line); }
+.hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(30, 14, 8, .35), rgba(30, 14, 8, .45)); }
+.hero-text { position: relative; z-index: 1; padding: 0 16px; }
+.script { font-family: var(--script); font-size: clamp(76px, 22vw, 150px); line-height: 1; transform: rotate(-4deg); text-shadow: 0 2px 20px rgba(0, 0, 0, .25); }
+.hero-links { display: flex; justify-content: center; gap: clamp(64px, 20vw, 160px); margin-top: clamp(56px, 12vh, 110px); }
+.hero-links a { font-size: clamp(30px, 7vw, 40px); font-style: italic; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 8px; }
 
-/* Photos kept small so they stay sharp */
-.gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: min(1000px, 100% - 48px); margin: clamp(48px, 8vw, 80px) auto 0; }
-.gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
-@media (max-width: 760px) { .gallery { grid-template-columns: 1fr 1fr; max-width: 520px; } }
+/* Full-width photo bands */
+.band { height: clamp(320px, 60vw, 640px); overflow: hidden; }
+.band img { width: 100%; height: 100%; object-fit: cover; }
+.visit-photo { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; margin-top: 48px; }
 
 /* Sections */
 .section { width: min(720px, 100% - 64px); margin: 0 auto; padding: clamp(72px, 12vw, 120px) 0; text-align: center; }
