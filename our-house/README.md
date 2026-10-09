@@ -17,7 +17,7 @@ After editing anything, rebuild the single file with `python3 tools/build_standa
 | Hero | Animated logo, "lit windows" that glow when the bar is open |
 | Awning ticker | Scrolling one-liners: walk-ins, monthly cocktails, £20 flights |
 | Intro | Who we are in one line + four reasons to come |
-| Menu | The real drinks menu as a tabbed "menu book": cocktails, wine, beer & cider, zero & low |
+| Menu | Photo header, key-fob sticker, then a clean list menu (styled after Bisous Chicago) with five categories. The line drawing changes with each category |
 | Wine flight | £20 blind-tasting flight, red/white toggle |
 | Our story | Short timeline (2014 distillery → bar) with the siblings' photo |
 | Reviews | Real Google reviews from the old site |
@@ -28,8 +28,8 @@ After editing anything, rebuild the single file with `python3 tools/build_standa
 ## Updating things
 
 - **Opening hours:** edit `HOURS` at the top of `js/main.js` (drives the live status and the hours table). Also update the footer summary and the `openingHoursSpecification` block in `index.html`.
-- **Menu:** it's plain HTML in `index.html`, under `<!-- Cocktails -->`, `<!-- Wine -->`, and so on. Copy an `<li class="item">` to add a drink.
-- **Photos:** drop new files into `images/` with the same names. The current ones are small thumbnails, so full-size originals will look much sharper.
+- **Menu:** it's plain HTML in `index.html`, under `<!-- Cocktails -->`, `<!-- Wine by the glass -->`, and so on. Copy an `<li class="mp-item">` to add a drink.
+- **Photos:** drop new files into `images/` with the same names. The current ones are small thumbnails, and the two menu photo bands (`menu-table.jpg`, `drinks-table.jpg`) are crops of old-site screenshots, so full-size originals will look much sharper.
 - **Enquiry form:** right now it opens the visitor's email app with everything filled in (to info@ourhousebar.co.uk). To receive submissions directly, point the form at a form service (Formspree, Netlify Forms, etc.).
 
 ## Before going live

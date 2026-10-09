@@ -165,6 +165,7 @@
      ------------------------------------------------------------ */
   const tabs = $$('[role="tab"]');
   const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')));
+  const doodles = $$('.doodle');
 
   function selectTab(tab, focus = false) {
     tabs.forEach((t, i) => {
@@ -173,6 +174,8 @@
       t.tabIndex = selected ? 0 : -1;
       panels[i].hidden = !selected;
     });
+    // Swap the line drawing; re-showing it replays the draw-on animation
+    doodles.forEach((d) => d.classList.toggle('is-active', d.dataset.doodle === tab.dataset.tab));
     if (focus) tab.focus();
   }
   selectTab(tabs[0]);
