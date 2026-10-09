@@ -82,38 +82,18 @@ button { font: inherit; color: inherit; }
 .insta svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .insta .dot { fill: currentColor; stroke: none; }
 
-/* Hero */
-.hero {
-  position: relative;
-  height: min(78svh, 720px); min-height: 440px;
-  display: grid; place-items: center;
-  overflow: hidden;
-  color: var(--cream);
-  text-align: center;
-}
-.hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 55% 50%; }
-.hero::after { content: ""; position: absolute; inset: 0; background: rgba(40, 18, 10, .38); }
-.hero-text { position: relative; z-index: 1; padding: 0 16px; }
-.script { font-family: var(--script); font-size: clamp(56px, 13vw, 120px); line-height: 1.1; transform: rotate(-4deg); }
-.hero-links { display: flex; justify-content: center; gap: clamp(60px, 18vw, 140px); margin-top: clamp(40px, 8vh, 80px); }
-.hero-links a {
-  font-size: clamp(30px, 6vw, 40px); font-style: italic; text-decoration: underline;
-  text-decoration-thickness: 1px; text-underline-offset: 8px;
-}
+/* Hero: logo on cream */
+.hero { padding: clamp(56px, 12vw, 120px) 24px clamp(64px, 10vw, 110px); text-align: center; border-bottom: 1px solid var(--line); }
+.hero-logo { width: min(560px, 100%); margin: 0 auto; color: var(--oxblood); }
+.hero-logo svg { display: block; width: 100%; height: auto; }
+.script { font-family: var(--script); font-size: clamp(44px, 11vw, 80px); line-height: 1.1; color: var(--ink); margin: clamp(36px, 7vw, 56px) 0 0; transform: rotate(-4deg); }
+.hero-links { display: flex; justify-content: center; gap: clamp(56px, 16vw, 120px); margin-top: clamp(32px, 6vw, 48px); }
+.hero-links a { font-size: clamp(28px, 6vw, 36px); font-style: italic; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 8px; }
 
-/* Logo sticker sitting on the photo edge, with a rule beneath */
-.sticker-row { position: relative; height: 70px; border-bottom: 1px solid var(--line); }
-.sticker {
-  position: absolute; left: 50%; bottom: 8px;
-  width: min(260px, 66vw);
-  padding: 14px 18px 12px;
-  transform: translateX(-50%) rotate(-3deg);
-  background: var(--apricot);
-  color: var(--oxblood);
-  border-radius: 12px;
-  box-shadow: 0 0 0 6px #FFF8EF, 0 10px 20px rgba(40, 18, 10, .25);
-}
-.sticker svg { width: 100%; height: auto; display: block; }
+/* Photos kept small so they stay sharp */
+.gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: min(1000px, 100% - 48px); margin: clamp(48px, 8vw, 80px) auto 0; }
+.gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+@media (max-width: 760px) { .gallery { grid-template-columns: 1fr 1fr; max-width: 520px; } }
 
 /* Sections */
 .section { width: min(720px, 100% - 64px); margin: 0 auto; padding: clamp(72px, 12vw, 120px) 0; text-align: center; }
@@ -149,9 +129,6 @@ button { font: inherit; color: inherit; }
 .desc { grid-column: 1 / -1; margin: 10px 0 0; font-size: 17px; letter-spacing: .06em; line-height: 1.6; }
 .compact li { margin-bottom: 22px; }
 .menu-foot { margin-top: 56px; }
-
-.band { height: clamp(260px, 50vw, 520px); overflow: hidden; }
-.band img { width: 100%; height: 100%; object-fit: cover; }
 
 /* Reviews */
 .reviews blockquote { margin: 0 0 48px; }
