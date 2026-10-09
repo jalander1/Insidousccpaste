@@ -11,7 +11,7 @@ After editing anything, rebuild the single file with `python3 tools/build_standa
 
 ## What's on the page
 
-A simple single page in the style of bisouschicago.com, in Our House colours: centred logo with a full-screen menu, photo hero, About, the full drinks menu (taken from the printed menu), reviews, Visit (address and hours) and Contact.
+One simple page: photo hero with the logo (the header sits over the photo and turns solid on scroll), About, the full drinks menu transcribed from the printed menu, reviews, Visit (address and hours) and Contact. Brand colours from the logo, Fraunces + DM Sans type.
 
 ## Updating things
 
@@ -29,4 +29,4 @@ A simple single page in the style of bisouschicago.com, in Our House colours: ce
 ## Credits
 
 - Logo traced to vector from the existing brand artwork.
-- Fonts: Marcellus (SIL OFL 1.1) and Yellowtail (Apache 2.0). See `fonts/LICENSE.txt`.
+- Fonts: Fraunces and DM Sans (SIL OFL 1.1). See `fonts/LICENSE.txt`.

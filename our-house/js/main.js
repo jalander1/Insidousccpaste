@@ -1,11 +1,19 @@
-/* Our House · small bits of behaviour */
+/* Our House · site behaviour (no dependencies) */
 (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
-  // Full-screen navigation
+  // Header turns solid once you scroll off the hero photo
+  const header = $('[data-header]');
+  const hero = $('[data-hero]');
+  const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > hero.offsetHeight - 90);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  // Mobile navigation
   const toggle = $('[data-nav-toggle]');
-  const panel = $('[data-nav]');
+  const panel = $('[data-mobile-nav]');
   const label = $('[data-nav-label]');
   const setNav = (open) => {
     panel.hidden = !open;
@@ -16,7 +24,9 @@
   };
   toggle.addEventListener('click', () => setNav(panel.hidden));
   $$('a', panel).forEach((a) => a.addEventListener('click', () => setNav(false)));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) { setNav(false); toggle.focus(); } });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden) { setNav(false); toggle.focus(); }
+  });
 
   // Menu sections
   const tabs = $$('[role="tab"]');
@@ -40,15 +50,15 @@
     });
   });
 
-  // Draw the glass when it comes into view
-  const doodle = $('.doodle');
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { doodle.classList.add('drawn'); io.disconnect(); }
-    }, { threshold: 0.6 });
-    io.observe(doodle);
+  // Fade sections in as they scroll into view
+  const reveals = $$('[data-reveal]');
+  if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+    }), { threshold: 0.12 });
+    reveals.forEach((el) => io.observe(el));
   } else {
-    doodle.classList.add('drawn');
+    reveals.forEach((el) => el.classList.add('is-in'));
   }
 
   // Contact form: opens the visitor's email app, filled in
