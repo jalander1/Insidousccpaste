@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Our House · Cocktail &amp; Wine Bar · Gloucester</title>
+  <title>Menu · Our House · Gloucester</title>
   <meta name="description" content="Our House cocktail and wine bar at Gloucester Food Dock. One of the Sibling Distillery family.">
   <!-- Concept build: remove noindex when this goes live -->
   <meta name="robots" content="noindex">
@@ -13,19 +13,19 @@
   <link rel="stylesheet" href="css/style.css">
   <script>document.documentElement.classList.replace('no-js', 'js')</script>
 </head>
-<body>
+<body class="page-menu">
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="site-header" data-header>
     <div class="header-inner">
-      <a class="brand" href="#top" aria-label="Our House, back to top">
+      <a class="brand" href="index.html" aria-label="Our House, back to top">
         <svg viewBox="40 340 3584 600" aria-hidden="true" focusable="false"><use href="#oh-frame"/><use href="#oh-title"/></svg>
       </a>
       <nav class="nav" aria-label="Main">
         <a href="menu.html">Menu</a>
-        <a href="#about">About</a>
-        <a href="#visit">Visit</a>
-        <a href="#contact">Contact</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#visit">Visit</a>
+        <a href="index.html#contact">Contact</a>
       </nav>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" data-nav-toggle>
         <span class="sr-only" data-nav-label>Open menu</span>
@@ -37,112 +37,213 @@
   <div class="mobile-nav" id="mobile-nav" hidden data-mobile-nav>
     <nav aria-label="Mobile">
       <a href="menu.html">Menu</a>
-      <a href="#about">About</a>
-      <a href="#visit">Visit</a>
-      <a href="#contact">Contact</a>
+      <a href="index.html#about">About</a>
+      <a href="index.html#visit">Visit</a>
+      <a href="index.html#contact">Contact</a>
     </nav>
     <p class="mobile-nav-foot">Unit 10, Gloucester Food Dock<br><a href="https://www.instagram.com/ourhouse_bar/" target="_blank" rel="noopener">@ourhouse_bar</a></p>
   </div>
 
   <main id="main">
-
-    <!-- Hero -->
-    <section class="hero" id="top" data-hero>
-      <img class="hero-img" src="images/cocktail.jpg" alt="" width="260" height="208">
-      <div class="hero-inner">
-        <h1 class="hero-logo">
-          <span class="sr-only">Everyone's welcome at Our House, cocktail and wine bar. One of the Sibling Distillery family.</span>
-          <svg viewBox="0 0 3664 1432" aria-hidden="true" focusable="false">
-            <g class="lg lg-script-top"><use href="#oh-script-top"/></g>
-            <g class="lg lg-frame"><use href="#oh-frame"/></g>
-            <g class="lg lg-title"><use href="#oh-title"/></g>
-            <g class="lg lg-tagline"><use href="#oh-tagline"/></g>
-            <g class="lg lg-script-bottom"><use href="#oh-script-bottom"/></g>
-          </svg>
-        </h1>
-        <div class="hero-links">
-          <a href="menu.html">menu</a>
-          <a href="#about">about</a>
-        </div>
-      </div>
-    </section>
-
-    <!-- About -->
-    <section class="about section" id="about">
-      <div class="wrap about-grid">
-        <div class="about-copy" data-reveal>
-          <h2 class="display">Grew up in a brewery. Built a distillery. <em>Opened a bar.</em></h2>
-          <p class="lede">We opened Sibling Distillery in 2014, in a disused office at our parents’ micro-brewery. Our House is our first wine and cocktail bar.</p>
-          <p>Expect a fresh cocktail list each month, sparkling wines by the glass to pair with our artisan charcuterie boards, and wine and spirits tastings to develop your palate.</p>
-          <a class="link-arrow" href="menu.html">See the menu</a>
-        </div>
-        <figure class="about-photo" data-reveal>
-          <img src="images/siblings.jpg" alt="The siblings behind Our House and Sibling Distillery" width="1074" height="1074" loading="lazy">
-        </figure>
-      </div>
-    </section>
-
-    <div class="band"><img src="images/interior.jpg" alt="Inside Our House: globe lamps, red leather chairs and the bar" width="260" height="208" loading="lazy"></div>
-
-    <div class="band"><img src="images/bartender.jpg" alt="Our bartender shaking a cocktail" width="312" height="208" loading="lazy"></div>
-
-    <!-- Reviews -->
-    <section class="reviews section" aria-labelledby="reviews-title">
+    <!-- ============ Menu ============ -->
+    <section class="menu-section section" id="menu" aria-labelledby="menu-title">
       <div class="wrap">
-        <h2 class="display" id="reviews-title" data-reveal>What people say</h2>
-        <ul class="quotes">
-          <li data-reveal><blockquote><p>Excellent service and even better cocktails. Will definitely be visiting again.</p></blockquote><p class="cite">Rory · Gloucester</p></li>
-          <li data-reveal><blockquote><p>The two gents behind the bar couldn’t have been more helpful and the drinks were wonderful! … 11/10 experience!</p></blockquote><p class="cite">Rosie · Gloucester</p></li>
-          <li data-reveal><blockquote><p>Cocktails and service are amazing! Will definitely be visiting again when we’re back this way!</p></blockquote><p class="cite">Google review</p></li>
-        </ul>
-      </div>
-    </section>
+        <header class="section-head" data-reveal>
+          <h1 class="display" id="menu-title">The Menu</h1>
+          <p class="lede">Our list changes every month. Here's a taste. Tonight's might be even better.</p>
+        </header>
 
-    <!-- Visit -->
-    <section class="visit section" id="visit">
-      <div class="wrap visit-grid">
-        <div data-reveal>
-          <h2 class="display">Find us on the Docks.</h2>
-          <address>Unit 10, Gloucester Food Dock<br>23–29 Commercial Road<br>Gloucester GL1 2EP</address>
-          <div class="btn-row">
-            <a class="btn btn-ox" href="https://www.google.com/maps/dir/?api=1&amp;destination=Our+House+Gloucester+Food+Dock+GL1+2EP" target="_blank" rel="noopener">Get directions</a>
-            <a class="btn btn-ghost" href="tel:+447882125969">Call 07882 125969</a>
+        <div class="menu-tabs" role="tablist" aria-label="Drinks menu">
+          <button class="menu-tab" role="tab" id="tab-cocktails" aria-controls="panel-cocktails" aria-selected="true" data-tab="cocktails">Cocktails</button>
+          <button class="menu-tab" role="tab" id="tab-wine" aria-controls="panel-wine" aria-selected="false" tabindex="-1" data-tab="wine">Wine</button>
+          <button class="menu-tab" role="tab" id="tab-beer" aria-controls="panel-beer" aria-selected="false" tabindex="-1" data-tab="beer" aria-label="Beer &amp; cider"><span class="tab-long">Beer &amp; cider</span><span class="tab-short">Beer</span></button>
+          <button class="menu-tab" role="tab" id="tab-zero" aria-controls="panel-zero" aria-selected="false" tabindex="-1" data-tab="zero" aria-label="Zero &amp; low"><span class="tab-long">Zero &amp; low</span><span class="tab-short">Zero</span></button>
+        </div>
+
+        <div class="menu-book" data-reveal>
+          <span class="corner tl" aria-hidden="true"></span><span class="corner tr" aria-hidden="true"></span>
+          <span class="corner bl" aria-hidden="true"></span><span class="corner br" aria-hidden="true"></span>
+          <div class="menu-paper">
+
+            <!-- Cocktails -->
+            <div class="menu-panel" id="panel-cocktails" role="tabpanel" aria-labelledby="tab-cocktails" tabindex="0">
+              <div class="page">
+                <h3 class="menu-h">Our House Cocktails</h3>
+                <p class="menu-note">The Best Of: this year's five top sellers, back for one last round to crown the true No.&nbsp;1. Every order's a vote.</p>
+                <ul class="items">
+                  <li class="item">
+                    <p class="item-name">Surely a Wine-d Up <span class="tag">Class of Apr ’25</span></p>
+                    <p class="item-price">9.90</p>
+                    <p class="item-desc">Hear us out… amaretto, cranberry &amp; vanilla vodka, cranberry juice, and… red wine?! One of our biggest hits.</p>
+                  </li>
+                  <li class="item">
+                    <p class="item-name">Release the Kraken <span class="tag">Class of Apr ’25</span></p>
+                    <p class="item-price">9.90</p>
+                    <p class="item-desc">A Dark &amp; Stormy, only darker, stormier and citrusier. Kraken rum, ginger beer, orange and a lively Angostura punch. For Gloucester's salty sea dogs.</p>
+                  </li>
+                  <li class="item">
+                    <p class="item-name">Walks in the Rain <span class="tag">Class of Jul ’25</span></p>
+                    <p class="item-price">9.90</p>
+                    <p class="item-desc">If you like piña coladas… blended gelato, Malibu, rum, coconut &amp; pineapple. A little coupe of luxury.</p>
+                  </li>
+                  <li class="item">
+                    <p class="item-name">Twistin’ My Melon <span class="tag">Class of Feb ’25</span></p>
+                    <p class="item-price">9.90</p>
+                    <p class="item-desc">A little green sweet-and-sour number. Melon liqueur, gin, apple &amp; lime. 100% freshness.</p>
+                  </li>
+                  <li class="item">
+                    <p class="item-name">Tirami-Sue Me <span class="tag">Class of Oct ’24</span></p>
+                    <p class="item-price">9.90</p>
+                    <p class="item-desc">Tiramisu, as a cocktail. Coffee liqueur, chocolate, vanilla vodka, Baileys &amp; cream… stop it.</p>
+                  </li>
+                </ul>
+              </div>
+              <div class="page">
+                <h3 class="menu-h">Classics</h3>
+                <p class="menu-note">Cocktails that need no introduction.</p>
+                <ul class="items items-compact two-col">
+                  <li class="item"><p class="item-name">Espresso Martini</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Gin Bramble</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Margarita</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Cosmopolitan</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Negroni</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Long Island Iced Tea</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Strawberry Daiquiri</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Mojito</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Old Fashioned</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Pornstar Martini</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Aperol, Campari or Limoncello Spritz</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Hugo Spritz</p><p class="item-price">9</p></li>
+                  <li class="item"><p class="item-name">Peach Bellini</p><p class="item-price">8</p></li>
+                  <li class="item"><p class="item-name">French 75</p><p class="item-price">10</p></li>
+                </ul>
+                <a class="menu-callout" href="#menu" data-open-tab="zero">
+                  <span class="menu-callout-big">Any cocktail, minus the booze.</span>
+                  <span>Just ask: £5. See zero &amp; low →</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- Wine -->
+            <div class="menu-panel" id="panel-wine" role="tabpanel" aria-labelledby="tab-wine" tabindex="0">
+              <div class="page">
+                <div class="flight-strip">
+                  <strong>Wine flight · £20</strong>
+                  All three house wines + the special. 4 × 100ml, served blind with tasting notes. Red or white.
+                </div>
+                <h3 class="menu-h">House wines</h3>
+                <div class="wine-head" aria-hidden="true"><span></span><span>Glass<br>175ml</span><span>Carafe<br>500ml</span><span>Bottle<br>750ml</span></div>
+
+                <h4 class="menu-sub">White</h4>
+                <ul class="items wine">
+                  <li class="item"><p class="item-name">Ormarine ‘Plo de l’Isabelle’ Picpoul de Pinet</p><p class="prices"><span>7.70</span><span>19.50</span><span>28</span></p><p class="item-desc">Languedoc, France · floral, citrus, nectarine</p></li>
+                  <li class="item"><p class="item-name">Casal de Ventozela Alvarinho</p><p class="prices"><span>8.10</span><span>21</span><span>29</span></p><p class="item-desc">Portugal · apricot, mango, lemon &amp; apple</p></li>
+                  <li class="item"><p class="item-name">King Stag Chardonnay</p><p class="prices"><span>9.20</span><span>25.50</span><span>35</span></p><p class="item-desc">California · peach, orange blossom, vanilla</p></li>
+                </ul>
+                <h4 class="menu-sub">Rosé</h4>
+                <ul class="items wine">
+                  <li class="item"><p class="item-name">Lua Nova Rosé, Vinho Verde</p><p class="prices"><span>6.40</span><span>18</span><span>26</span></p><p class="item-desc">Northern Portugal · light, bright, raspberry &amp; citrus</p></li>
+                </ul>
+                <h4 class="menu-sub">Red</h4>
+                <ul class="items wine">
+                  <li class="item"><p class="item-name">Dominio Fuente Organic Grenache</p><p class="prices"><span>7.10</span><span>19</span><span>26.50</span></p><p class="item-desc">Spain · light, fruity, delicious</p></li>
+                  <li class="item"><p class="item-name">Primo Rosso Appassimento Primitivo</p><p class="prices"><span>8.90</span><span>23.50</span><span>32.50</span></p><p class="item-desc">Puglia, Italy · cherry, raspberry, redcurrant</p></li>
+                  <li class="item"><p class="item-name">Ghost in the Machine Cabernet Franc</p><p class="prices"><span>11</span><span>30</span><span>40</span></p><p class="item-desc">South Africa · blackberry, blackcurrant, herbaceous</p></li>
+                </ul>
+                <h4 class="menu-sub">Sparkling <small>125ml glass</small></h4>
+                <ul class="items wine">
+                  <li class="item"><p class="item-name">Cave de Lugny Crémant de Bourgogne</p><p class="prices"><span>10</span><span>–</span><span>40</span></p><p class="item-desc">Blanc de blancs · Champagne-method, light &amp; elegant</p></li>
+                  <li class="item"><p class="item-name">Prosecco</p><p class="prices"><span>8</span><span>–</span><span>30</span></p></li>
+                  <li class="item"><p class="item-name">Col de Rove Sparkling Red</p><p class="prices"><span>9</span><span>–</span><span>36</span></p><p class="item-desc">Italy</p></li>
+                </ul>
+              </div>
+              <div class="page">
+                <h3 class="menu-h">By the bottle</h3>
+                <h4 class="menu-sub">White &amp; rosé</h4>
+                <ul class="items">
+                  <li class="item"><p class="item-name">Crescendo Pinot Grigio</p><p class="item-price">26</p><p class="item-desc">Abruzzo, Italy. The crowd-pleaser: fresh melon &amp; pear.</p></li>
+                  <li class="item"><p class="item-name">Finger Post Sauvignon Blanc</p><p class="item-price">35</p><p class="item-desc">Marlborough, NZ. Bags of tropical fruit &amp; gooseberry, clean and elegant. We love it. You will too.</p></li>
+                  <li class="item"><p class="item-name">Château de Crézancy Sancerre</p><p class="item-price">46</p><p class="item-desc">France. Family-run for generations. Citrus, white peach, pear &amp; a hint of white pepper.</p></li>
+                  <li class="item"><p class="item-name">Calusari Pinot Rosé</p><p class="item-price">28</p><p class="item-desc">Romania. Provence's latitude, better value. Strawberries &amp; cream in a glass.</p></li>
+                </ul>
+                <h4 class="menu-sub">Red</h4>
+                <ul class="items">
+                  <li class="item"><p class="item-name">Five Ravens Pinot Noir</p><p class="item-price">24</p><p class="item-desc">Romania. Mellow and bright: cranberry &amp; cherry.</p></li>
+                  <li class="item"><p class="item-name">Baron de Baussac Carignan</p><p class="item-price">28</p><p class="item-desc">South of France. Smooth, richly spiced, lightly aged. Côtes du Rhône meets Roussillon. Et voilà.</p></li>
+                  <li class="item"><p class="item-name">Chapoutier ‘La Ciboise’ Rouge</p><p class="item-price">32</p><p class="item-desc">Côtes du Rhône. Grenache/Syrah, silky tannins, ripe black fruit. Ask us for the story.</p></li>
+                  <li class="item"><p class="item-name">Chateau Ste. Michelle Cabernet Sauvignon</p><p class="item-price">37</p><p class="item-desc">Columbia Valley, USA. 22× Winery of the Year (Wine &amp; Spirits). Rich, balanced, blackberry &amp; plum.</p></li>
+                  <li class="item"><p class="item-name">Château de Sales, Pomerol</p><p class="item-price">62</p><p class="item-desc">Bordeaux. 500 years in the family, up to 18 months in French oak. Plush redcurrant &amp; raspberry.</p></li>
+                </ul>
+                <h4 class="menu-sub">Fizz</h4>
+                <ul class="items">
+                  <li class="item"><p class="item-name">Vilarnau Gold Organic Reserva</p><p class="item-price">35</p><p class="item-desc">Penedès, Barcelona. Climate-certified Cava. Be adventurous. You won't be disappointed.</p></li>
+                  <li class="item"><p class="item-name">Pierre Mignon Grande Réserve 1er Cru Brut</p><p class="item-price">50</p><p class="item-desc">Champagne. Family grower fizz: crisp apple, buttered brioche.</p></li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Beer & cider -->
+            <div class="menu-panel" id="panel-beer" role="tabpanel" aria-labelledby="tab-beer" tabindex="0">
+              <div class="page">
+                <h3 class="menu-h">On draught</h3>
+                <p class="menu-note">By the pint.</p>
+                <ul class="items">
+                  <li class="item"><p class="item-name">Mahou</p><p class="item-price">5.80</p><p class="item-desc">Premium Spanish lager · 5.1%</p></li>
+                  <li class="item"><p class="item-name">Löwenbräu</p><p class="item-price">5.80</p><p class="item-desc">Bavarian lager · 5%</p></li>
+                  <li class="item"><p class="item-name">Orchard Pig</p><p class="item-price">5</p><p class="item-desc">Somerset cider · 4.5%</p></li>
+                  <li class="item"><p class="item-name">Guinness</p><p class="item-price">5.90</p><p class="item-desc">Irish stout · 4.2%</p></li>
+                  <li class="item"><p class="item-name">Guinness 0.0</p><p class="item-price">4.50</p><p class="item-desc">Alcohol free · 0%</p></li>
+                </ul>
+              </div>
+              <div class="page">
+                <h3 class="menu-h">Bottles &amp; cans</h3>
+                <ul class="items">
+                  <li class="item"><p class="item-name">Damm Cerveza &amp; Lemon</p><p class="item-price">3.80</p><p class="item-desc">Spanish beer with Mediterranean lemon · 3.2% · 330ml</p></li>
+                  <li class="item"><p class="item-name">Rosa Blanca Lager</p><p class="item-price">3.80</p><p class="item-desc">Made in Majorca · 3.2% · 330ml can</p></li>
+                  <li class="item"><p class="item-name">Peroni 0.0</p><p class="item-price">3.50</p><p class="item-desc">0% · 330ml</p></li>
+                  <li class="item"><p class="item-name">Hogan’s High Sobriety Cider</p><p class="item-price">4</p><p class="item-desc">1% · 500ml</p></li>
+                  <li class="item"><p class="item-name">Landlord</p><p class="item-price">5</p><p class="item-desc">4.1% · 500ml</p></li>
+                  <li class="item"><p class="item-name">Arbour Mosaic</p><p class="item-price">6</p><p class="item-desc">Gluten free · 4% · 568ml</p></li>
+                  <li class="item"><p class="item-name">Cornish Orchards Raspberry &amp; Elderflower</p><p class="item-price">5</p><p class="item-desc">4% · 500ml</p></li>
+                  <li class="item"><p class="item-name">Cornish Orchards Cherry &amp; Blackberry</p><p class="item-price">5</p><p class="item-desc">4% · 500ml</p></li>
+                  <li class="item"><p class="item-name">Erdinger Weiss</p><p class="item-price">6</p><p class="item-desc">5.3% · 500ml</p></li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Zero & low -->
+            <div class="menu-panel" id="panel-zero" role="tabpanel" aria-labelledby="tab-zero" tabindex="0">
+              <div class="page">
+                <h3 class="menu-h">Grown-up softs &amp; mocktails</h3>
+                <p class="menu-note">Any cocktail, minus the booze. Just ask and we'll make you something tasty: £5.</p>
+                <ul class="items">
+                  <li class="item"><p class="item-name">Peach Fizz</p><p class="item-price">5</p><p class="item-desc">Peach, vanilla &amp; fresh mint, topped with sparkling lemonade.</p></li>
+                  <li class="item"><p class="item-name">Cherry Apple</p><p class="item-price">5</p><p class="item-desc">A classic combo served short. Rich and bittersweet.</p></li>
+                  <li class="item"><p class="item-name">Pentire ‘Adrift’ 0% G&amp;T</p><p class="item-price">5</p><p class="item-desc">Cornish botanical eco-spirit with tonic.</p></li>
+                  <li class="item"><p class="item-name">Against the Current Kombucha</p><p class="item-price">4</p><p class="item-desc">Rhubarb &amp; hibiscus (or similar!).</p></li>
+                  <li class="item"><p class="item-name">Goodrays CBD Soda</p><p class="item-price">5</p><p class="item-desc">Blood orange &amp; grapefruit · 30mg CBD.</p></li>
+                  <li class="item"><p class="item-name">Iced Tea</p><p class="item-price">4</p><p class="item-desc">Freshly shaken passionfruit &amp; lemon sweet tea.</p></li>
+                </ul>
+              </div>
+              <div class="page">
+                <div class="ct-card">
+                  <h3 class="menu-h">Coffee &amp; Tonic</h3>
+                  <p class="ct-pitch">Not as weird as it sounds. Super summery.</p>
+                  <p class="item-desc">Tonic (or light tonic), ice, a double espresso &amp; a slice of orange.</p>
+                  <div class="ct-row"><span>Add gin (dare ya)</span><p class="item-price ct-price">+3.50</p></div>
+                </div>
+                <h3 class="menu-h">Low &amp; no, on tap and in the fridge</h3>
+                <ul class="items">
+                  <li class="item"><p class="item-name">Guinness 0.0</p><p class="item-price">4.50</p><p class="item-desc">Draught pint · 0%</p></li>
+                  <li class="item"><p class="item-name">Peroni 0.0</p><p class="item-price">3.50</p><p class="item-desc">330ml · 0%</p></li>
+                  <li class="item"><p class="item-name">Hogan’s High Sobriety Cider</p><p class="item-price">4</p><p class="item-desc">500ml · 1%</p></li>
+                </ul>
+              </div>
+            </div>
+
           </div>
-          <img class="visit-photo" src="images/exterior.jpg" alt="The front of Our House with its awning and outdoor seating" width="312" height="208" loading="lazy">
         </div>
-        <div class="hours-card" data-reveal>
-          <h3>Opening hours</h3>
-          <ul class="hours">
-            <li><span>Monday</span><span class="dots"></span><span class="closed">Closed</span></li>
-            <li><span>Tuesday</span><span class="dots"></span><span>4pm – 10pm</span></li>
-            <li><span>Wednesday</span><span class="dots"></span><span>4pm – 10pm</span></li>
-            <li><span>Thursday</span><span class="dots"></span><span>1pm – 10pm</span></li>
-            <li><span>Friday</span><span class="dots"></span><span>1pm – midnight</span></li>
-            <li><span>Saturday</span><span class="dots"></span><span>1pm – midnight</span></li>
-            <li><span>Sunday</span><span class="dots"></span><span>1pm – 9pm</span></li>
-          </ul>
-          <p class="hours-note">Walk-ins welcome. For groups of six or more, <a href="#contact">get in touch</a>.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Contact -->
-    <section class="contact section" id="contact">
-      <div class="wrap contact-grid">
-        <div data-reveal>
-          <h2 class="display">Get in touch.</h2>
-          <p class="lede">Questions, groups or tastings: drop us a line.</p>
-          <p class="contact-lines"><a href="mailto:info@ourhousebar.co.uk">info@ourhousebar.co.uk</a><br><a href="tel:+447882125969">07882 125969</a></p>
-        </div>
-        <div class="form-card" data-reveal>
-          <form class="form" data-form action="mailto:info@ourhousebar.co.uk" method="post" enctype="text/plain">
-            <label>Name<input name="name" type="text" autocomplete="name" required></label>
-            <label>Email<input name="email" type="email" autocomplete="email" required></label>
-            <label>Message<textarea name="message" rows="5" required></textarea></label>
-            <button class="btn btn-ox" type="submit">Send message</button>
-          </form>
-          <p class="sent" data-sent hidden>Thank you. Your email app should open with your message, ready to send.</p>
-        </div>
+        <p class="menu-foot">Prices in £. Allergies or dietary needs? Just ask the team. Peckish? Ask about our charcuterie boards.</p>
       </div>
     </section>
   </main>

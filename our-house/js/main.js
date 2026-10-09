@@ -6,7 +6,8 @@
   // Header turns solid once you scroll off the hero photo
   const header = $('[data-header]');
   const hero = $('[data-hero]');
-  const onScroll = () => header.classList.toggle('is-scrolled', window.scrollY > hero.offsetHeight - 90);
+  // Pages without a hero photo (the menu) keep the solid header
+  const onScroll = () => header.classList.toggle('is-scrolled', !hero || window.scrollY > hero.offsetHeight - 90);
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);
   onScroll();
@@ -39,7 +40,7 @@
     });
     if (focus) tab.focus();
   };
-  select(tabs[0]);
+  if (tabs.length) select(tabs[0]);
   tabs.forEach((tab, i) => {
     tab.addEventListener('click', () => select(tab));
     tab.addEventListener('keydown', (e) => {
@@ -49,6 +50,12 @@
       select(tabs[(to + tabs.length) % tabs.length], true);
     });
   });
+
+  // Links that jump to a menu section, e.g. "Any cocktail, minus the booze"
+  $$('[data-open-tab]').forEach((link) => link.addEventListener('click', () => {
+    const tab = tabs.find((t) => t.getAttribute('aria-controls') === `panel-${link.dataset.openTab}`);
+    if (tab) select(tab);
+  }));
 
   // Fade sections in as they scroll into view
   const reveals = $$('[data-reveal]');
@@ -63,7 +70,7 @@
 
   // Contact form: opens the visitor's email app, filled in
   const form = $('[data-form]');
-  form.addEventListener('submit', (e) => {
+  if (form) form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!form.reportValidity()) return;
     const d = new FormData(form);

@@ -4,19 +4,22 @@ A proof-of-concept redesign of the Our House cocktail & wine bar site (Glouceste
 
 ## View it
 
-- **Quickest:** open `dist/our-house.html` in any browser. It's one self-contained file (fonts, photos, styles and scripts all inlined), so you can email it or AirDrop it to a phone.
+- **Quickest:** open `dist/our-house.html` in any browser. It's one self-contained file with both pages (the Menu link switches between them), so you can email it or AirDrop it to a phone. `dist/index.html` and `dist/menu.html` are the same pages as separate files.
 - **Working copy:** open `index.html`, or serve the folder (`python3 -m http.server`) and visit `http://localhost:8000`.
 
 After editing anything, rebuild the single file with `python3 tools/build_standalone.py`.
 
 ## What's on the page
 
-One simple page: photo hero with the logo (the header sits over the photo and turns solid on scroll), About, the full drinks menu transcribed from the printed menu, reviews, Visit (address and hours) and Contact. Brand colours from the logo, Fraunces + DM Sans type.
+Two pages:
+
+- **Home** (`index.html`): photo hero with the logo (the header sits over the photo and turns solid on scroll), About, reviews, Visit (address and hours) and Contact.
+- **Menu** (`menu.html`): the full drinks menu from the printed menu, laid out as a menu book with tabs for Cocktails, Wine, Beer & cider and Zero & low.
 
 ## Updating things
 
 - **Opening hours:** edit the hours list in the Visit section of `index.html`.
-- **Menu:** plain HTML in the Menu section of `index.html`. Copy an `<li>` to add a drink.
+- **Menu:** plain HTML in `menu.html`. Copy an `<li class="item">` to add a drink.
 - **Photos:** drop new files into `images/` with the same names. The photos are crops from screenshots, so full-size originals will look sharper.
 - **Contact form:** opens the visitor's email app addressed to info@ourhousebar.co.uk. Swap for a form service to receive messages directly.
 
