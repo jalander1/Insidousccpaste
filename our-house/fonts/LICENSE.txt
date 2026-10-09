@@ -1,0 +1,5 @@
+Self-hosted web fonts (sourced from Fontsource, fontsource.org)
+
+- Fraunces  — Copyright 2020 The Fraunces Project Authors. SIL Open Font License 1.1 (https://openfontlicense.org)
+- DM Sans   — Copyright 2014 The DM Sans Project Authors. SIL Open Font License 1.1 (https://openfontlicense.org)
+- Yellowtail — Copyright Astigmatic. Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
