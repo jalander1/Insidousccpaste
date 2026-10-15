@@ -5,8 +5,14 @@ export type ObjectiveStatus = 'unset' | 'hit' | 'missed';
 
 export type Kind = 'binary' | 'abstain' | 'checklist';
 
-/** The four states a cell can be in. Only kept/broken are ever stored. */
-export type CellStatus = 'kept' | 'broken' | 'released' | 'unanswered';
+/**
+ * The five states a cell can be in. Only kept/broken are ever stored.
+ *
+ * `released` and `away` both mean "not asked of you", and differ in what they
+ * do to a run: a release the schedule made is transparent, a block you chose
+ * ends it.
+ */
+export type CellStatus = 'kept' | 'broken' | 'released' | 'away' | 'unanswered';
 
 export interface StandardVersion {
   id: number;
@@ -16,6 +22,8 @@ export interface StandardVersion {
   definition: string;
   kind: Kind;
   weekdays: string;
+  /** Does not take holidays: a block leaves it asked, tickable and counting. */
+  pinned: boolean;
   effectiveFrom: ISODate;
   effectiveTo: ISODate | null;
   steps: RoutineStep[];
@@ -49,8 +57,8 @@ export interface DayCell {
   /** The run of days kept up to this date, and the longest there has ever been. */
   streak: StreakInfo;
   reason: string;
-  /** Set when the cell is released by a per-date exemption rather than the schedule. */
-  exemptReason: string | null;
+  /** Set when a block put the day out of reach, rather than the schedule. */
+  awayReason: string | null;
   steps: DayStepView[];
 }
 
@@ -58,7 +66,11 @@ export interface DayView {
   date: ISODate;
   cells: DayCell[];
   /** Written the night before, ticked that day, gone after it. */
-  onePercent: { text: string; status: ObjectiveStatus; streak: StreakInfo };
+  onePercent: {
+    text: string; status: ObjectiveStatus; streak: StreakInfo;
+    /** Set when a block covers the day: the 1% goes away with the sheet. */
+    awayReason: string | null;
+  };
   /** What he has set for tomorrow, so he can write it while winding down. */
   tomorrowOnePercent: string;
 }
@@ -66,4 +78,16 @@ export interface DayView {
 export interface StreakInfo {
   current: number;
   best: number;
+}
+
+/**
+ * A stretch of days put out of reach. With no `lineageId` it covers every
+ * standard that is not pinned; with one it is the single-standard exception.
+ */
+export interface Block {
+  id: number;
+  startDate: ISODate;
+  endDate: ISODate;
+  lineageId: number | null;
+  reason: string;
 }

@@ -185,19 +185,84 @@ test('un-checking a step withdraws the automatic kept, but not an explicit broke
   db.close();
 });
 
-test('an exemption releases one standard on one day without touching the rest', () => {
+test('a one-day block releases one standard without touching the rest', () => {
   const { db } = tempDb();
   const wake = byName(store.getDay(db, MON).cells, 'Wake by');
-  store.setExemption(db, MON, wake.lineageId, 'Flight landed at 4am.');
+  const block = store.setBlock(db, {
+    startDate: MON, endDate: MON, lineageId: wake.lineageId, reason: 'Flight landed at 4am.',
+  });
 
   const view = store.getDay(db, MON);
   const cell = byName(view.cells, 'Wake by');
-  assert.equal(cell.status, 'released');
-  assert.equal(cell.exemptReason, 'Flight landed at 4am.');
+  assert.equal(cell.status, 'away');
+  assert.equal(cell.awayReason, 'Flight landed at 4am.');
   assert.equal(byName(view.cells, 'No TV').status, 'unanswered', 'others untouched');
 
-  store.clearExemption(db, MON, wake.lineageId);
+  store.clearBlock(db, block.id);
   assert.equal(byName(store.getDay(db, MON).cells, 'Wake by').status, 'unanswered');
+  db.close();
+});
+
+test('a holiday blocks the whole sheet, bar what is pinned', () => {
+  const { db } = tempDb();
+  const porn = byName(store.currentStandards(db), 'No porn');
+  assert.equal(porn.pinned, true, 'this one does not take holidays');
+
+  store.setBlock(db, { startDate: '2026-08-24', endDate: '2026-08-28', reason: 'Italy' });
+
+  for (const date of ['2026-08-24', '2026-08-26', '2026-08-28']) {
+    const cells = store.getDay(db, date).cells;
+    assert.equal(byName(cells, 'Morning routine').status, 'away', `away on ${date}`);
+    assert.equal(byName(cells, 'Morning routine').awayReason, 'Italy');
+    assert.equal(byName(cells, 'No porn').status, 'unanswered', 'pinned, so still asked');
+    assert.equal(byName(cells, 'No porn').awayReason, null);
+  }
+  // Either side of the block, business as usual.
+  assert.equal(byName(store.getDay(db, '2026-08-23').cells, 'Morning routine').status, 'unanswered');
+  assert.equal(byName(store.getDay(db, '2026-08-29').cells, 'Morning routine').status, 'unanswered');
+
+  // A pinned standard can still be ticked while away, and its run survives.
+  store.setMark(db, '2026-08-26', byName(store.getDay(db, '2026-08-26').cells, 'No porn').standardId,
+    'kept', '');
+  assert.equal(byName(store.getDay(db, '2026-08-26').cells, 'No porn').status, 'kept');
+  db.close();
+});
+
+test('a block hides what you ticked without deleting it', () => {
+  const { db } = tempDb();
+  const tv = byName(store.getDay(db, MON).cells, 'No TV');
+  store.setMark(db, MON, tv.standardId, 'kept', '');
+
+  const block = store.setBlock(db, { startDate: MON, endDate: MON, reason: 'Away' });
+  assert.equal(byName(store.getDay(db, MON).cells, 'No TV').status, 'away',
+    'the day is out of reach, whatever is recorded against it');
+
+  // Undo the block and the tick is exactly where it was.
+  store.clearBlock(db, block.id);
+  assert.equal(byName(store.getDay(db, MON).cells, 'No TV').status, 'kept');
+  assert.equal(byName(store.getDay(db, MON).cells, 'No TV').streak.current, 1);
+  db.close();
+});
+
+test('a block ends a run; the schedule never does', () => {
+  const { db } = tempDb();
+  const tv = byName(store.getDay(db, MON).cells, 'No TV');   // Mon–Sat
+
+  // Eight days clean, straight through a Sunday the schedule releases.
+  for (const d of ['2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20',
+                   '2026-08-21', '2026-08-22', '2026-08-24', '2026-08-25']) {
+    store.setMark(db, d, tv.standardId, 'kept', '');
+  }
+  const before = byName(store.getDay(db, '2026-08-25').cells, 'No TV');
+  assert.equal(before.streak.current, 8, 'the Sunday in the middle is free');
+  assert.equal(before.streak.best, 8);
+
+  // Now block out the 26th. The run ends there, and the record stands.
+  store.setBlock(db, { startDate: '2026-08-26', endDate: '2026-08-26', reason: 'Away' });
+  const after = byName(store.getDay(db, '2026-08-26').cells, 'No TV');
+  assert.equal(after.status, 'away');
+  assert.equal(after.streak.current, 0, 'a block you chose is not a free day');
+  assert.equal(after.streak.best, 8, 'but what you did is still on the board');
   db.close();
 });
 
@@ -386,5 +451,26 @@ test('the 1% keeps its own run', () => {
 
   // A night with nothing written is not a night it was missed.
   assert.equal(store.getDay(db, '2026-08-12').onePercent.streak.current, 2);
+  db.close();
+});
+
+test('a block takes the 1% with the rest of the sheet', () => {
+  const { db } = tempDb();
+  for (const d of ['2026-08-20', '2026-08-21', '2026-08-22']) {
+    store.setOnePercent(db, d, { text: 'Phone in the study by 22:30' });
+    store.setOnePercent(db, d, { status: 'hit' });
+  }
+  assert.equal(store.getDay(db, '2026-08-22').onePercent.streak.current, 3);
+
+  store.setBlock(db, { startDate: '2026-08-23', endDate: '2026-08-25', reason: 'Italy' });
+  const away = store.getDay(db, '2026-08-24');
+  assert.equal(away.onePercent.awayReason, 'Italy', 'nothing to write while away');
+  assert.equal(away.onePercent.streak.current, 0, 'and the run goes with the days');
+  assert.equal(away.onePercent.streak.best, 3, 'what was done still stands');
+
+  // A night you simply did not write one is still transparent.
+  const quiet = store.getDay(db, '2026-08-22');
+  assert.equal(quiet.onePercent.awayReason, null);
+  assert.equal(quiet.onePercent.streak.current, 3);
   db.close();
 });

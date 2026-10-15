@@ -6,7 +6,7 @@ import { checklistComplete, resolveCell, stepApplies } from '../../shared/resolv
 import { computeStreaks } from '../../shared/streaks.js';
 import type {
   CellStatus, DayCell, DayView, Kind, ObjectiveStatus, RoutineStep,
-  StandardVersion, StreakInfo,
+  StandardVersion, StreakInfo, Block,
 } from '../../shared/types.js';
 
 const now = () => new Date().toISOString();
@@ -15,7 +15,7 @@ const now = () => new Date().toISOString();
 
 interface StandardRow {
   id: number; lineage_id: number; display_order: number; name: string;
-  definition: string; kind: Kind; weekdays: string;
+  definition: string; kind: Kind; weekdays: string; pinned: number;
   effective_from: string; effective_to: string | null;
 }
 
@@ -36,6 +36,7 @@ function toStandard(r: StandardRow, steps: RoutineStep[]): StandardVersion {
   return {
     id: r.id, lineageId: r.lineage_id, displayOrder: r.display_order,
     name: r.name, definition: r.definition, kind: r.kind, weekdays: r.weekdays,
+    pinned: !!r.pinned,
     effectiveFrom: r.effective_from, effectiveTo: r.effective_to,
     steps: steps.filter((s) => s.standardId === r.id)
       .sort((a, b) => a.stepOrder - b.stepOrder),
@@ -84,10 +85,23 @@ function ensureDay(db: DB, date: ISODate): void {
   db.prepare('INSERT OR IGNORE INTO day (date) VALUES (?)').run(date);
 }
 
-function exemptionsFor(db: DB, date: ISODate): Map<number, string> {
-  const rows = db.prepare('SELECT lineage_id, reason FROM exemption WHERE date = ?')
-    .all(date) as { lineage_id: number; reason: string }[];
+/**
+ * Which standards this date is blocked for, and why. A block with no lineage
+ * covers everything; `null` in the map is that whole-sheet block, looked up
+ * when a standard has no block of its own.
+ */
+function blocksOn(db: DB, date: ISODate): Map<number | null, string> {
+  const rows = db.prepare(
+    'SELECT lineage_id, reason FROM block WHERE ? BETWEEN start_date AND end_date',
+  ).all(date) as { lineage_id: number | null; reason: string }[];
   return new Map(rows.map((r) => [r.lineage_id, r.reason]));
+}
+
+/** The reason this standard is out of reach on this date, or null. */
+function blockReason(blocks: Map<number | null, string>, lineageId: number): string | null {
+  if (blocks.has(lineageId)) return blocks.get(lineageId) || '';
+  if (blocks.has(null)) return blocks.get(null) || '';
+  return null;
 }
 
 /** The resolved rows for one date, without building the whole view. */
@@ -128,9 +142,13 @@ export function streaksUpTo(db: DB, date: ISODate): Map<number, StreakInfo> {
   const dates = rangeDates(from, date);
   if (dates.length === 0) return out;
 
-  const exempt = new Set<string>(
-    (db.prepare('SELECT date, lineage_id FROM exemption WHERE date BETWEEN ? AND ?')
-      .all(from, date) as any[]).map((r) => `${r.date}|${r.lineage_id}`),
+  // Pull the blocks touching the window once, then test each date against them.
+  const blocks = db.prepare(
+    'SELECT start_date, end_date, lineage_id FROM block WHERE start_date <= ? AND end_date >= ?',
+  ).all(date, from) as { start_date: string; end_date: string; lineage_id: number | null }[];
+  const isBlocked = (d: ISODate, lineageId: number) => blocks.some(
+    (b) => b.start_date <= d && d <= b.end_date
+      && (b.lineage_id === null || b.lineage_id === lineageId),
   );
   const marks = new Map<string, 'kept' | 'broken'>(
     (db.prepare('SELECT date, standard_id, status FROM mark WHERE date BETWEEN ? AND ?')
@@ -150,27 +168,51 @@ export function streaksUpTo(db: DB, date: ISODate): Map<number, StreakInfo> {
         (x) => x.effectiveFrom <= d && (x.effectiveTo === null || d <= x.effectiveTo),
       );
       if (!v) continue;  // the standard did not exist yet, or no longer does
-      statuses.push(resolveCell(v, d, exempt.has(`${d}|${lineageId}`), marks.get(`${d}|${v.id}`)));
+      statuses.push(resolveCell(v, d, isBlocked(d, lineageId), marks.get(`${d}|${v.id}`)));
     }
     out.set(lineageId, computeStreaks(statuses));
   }
   return out;
 }
 
-/** The same count for the 1%, which is written fresh every night. */
+/**
+ * The same count for the 1%, which is written fresh every night. A night with
+ * nothing written is transparent — there was nothing to keep — but a night
+ * inside a block is not: you blocked the day out, so the run ends with it.
+ */
 function onePercentStreak(db: DB, date: ISODate): StreakInfo {
-  const rows = db.prepare(
-    `SELECT date, one_percent, one_percent_status FROM day
-      WHERE date <= ? AND TRIM(one_percent) <> '' ORDER BY date`,
-  ).all(date) as { one_percent_status: ObjectiveStatus }[];
-  return computeStreaks(rows.map((r) =>
-    r.one_percent_status === 'hit' ? 'kept'
-      : r.one_percent_status === 'missed' ? 'broken' : 'unanswered'));
+  // Walked by date, not by row: a blocked day usually has nothing written
+  // against it, so there is no row to find it by.
+  const first = (db.prepare('SELECT MIN(effective_from) f FROM standard')
+    .get() as { f: string | null }).f;
+  if (!first) return { current: 0, best: 0 };
+  const from = first < addDays(date, -730) ? addDays(date, -730) : first;
+
+  const written = new Map<ISODate, ObjectiveStatus>(
+    (db.prepare(
+      `SELECT date, one_percent_status FROM day
+        WHERE date BETWEEN ? AND ? AND TRIM(one_percent) <> ''`,
+    ).all(from, date) as { date: ISODate; one_percent_status: ObjectiveStatus }[])
+      .map((r) => [r.date, r.one_percent_status]),
+  );
+  const away = db.prepare(
+    `SELECT start_date, end_date FROM block
+      WHERE lineage_id IS NULL AND start_date <= ? AND end_date >= ?`,
+  ).all(date, from) as { start_date: string; end_date: string }[];
+
+  const statuses: CellStatus[] = [];
+  for (const d of rangeDates(from, date)) {
+    if (away.some((b) => b.start_date <= d && d <= b.end_date)) { statuses.push('away'); continue; }
+    const st = written.get(d);
+    if (st === undefined) continue;   // nothing written is nothing to keep
+    statuses.push(st === 'hit' ? 'kept' : st === 'missed' ? 'broken' : 'unanswered');
+  }
+  return computeStreaks(statuses);
 }
 
 export function getDay(db: DB, date: ISODate): DayView {
   const standards = standardsAt(db, date);
-  const exempt = exemptionsFor(db, date);
+  const blocks = blocksOn(db, date);
   const streaks = streaksUpTo(db, date);
 
   const marks = new Map<number, { status: 'kept' | 'broken'; reason: string }>(
@@ -184,7 +226,7 @@ export function getDay(db: DB, date: ISODate): DayView {
   );
 
   const cells: DayCell[] = standards.map((s) => {
-    const isExempt = exempt.has(s.lineageId);
+    const blocked = blockReason(blocks, s.lineageId);
     const mark = marks.get(s.id);
     return {
       lineageId: s.lineageId,
@@ -193,10 +235,10 @@ export function getDay(db: DB, date: ISODate): DayView {
       definition: s.definition,
       kind: s.kind,
       displayOrder: s.displayOrder,
-      status: resolveCell(s, date, isExempt, mark?.status),
+      status: resolveCell(s, date, blocked !== null, mark?.status),
       streak: streaks.get(s.lineageId) ?? { current: 0, best: 0 },
       reason: mark?.reason ?? '',
-      exemptReason: isExempt ? (exempt.get(s.lineageId) || '') : null,
+      awayReason: blocked !== null && !s.pinned ? blocked : null,
       steps: s.steps.map((st) => ({
         ...st,
         applicable: stepApplies(st, date),
@@ -208,7 +250,12 @@ export function getDay(db: DB, date: ISODate): DayView {
   return {
     date,
     cells,
-    onePercent: { ...getOnePercent(db, date), streak: onePercentStreak(db, date) },
+    onePercent: {
+      ...getOnePercent(db, date),
+      streak: onePercentStreak(db, date),
+      // A block takes the whole sheet, the 1% with it.
+      awayReason: blocks.has(null) ? (blocks.get(null) || '') : null,
+    },
     tomorrowOnePercent: getOnePercent(db, addDays(date, 1)).text,
   };
 }
@@ -390,26 +437,44 @@ export function reorderStandards(db: DB, lineageIds: number[]): void {
   db.transaction(() => lineageIds.forEach((id, i) => stmt.run(i + 1, id)))();
 }
 
-// --------------------------------------------------------------- exemptions
+// ------------------------------------------------------------------- blocks
 
-export function setExemption(db: DB, date: ISODate, lineageId: number, reason: string): void {
-  ensureDay(db, date);
-  db.prepare(
-    `INSERT INTO exemption (date, lineage_id, reason) VALUES (?, ?, ?)
-     ON CONFLICT(date, lineage_id) DO UPDATE SET reason = excluded.reason`,
-  ).run(date, lineageId, reason);
+/**
+ * Put a stretch of days out of reach. Leave `lineageId` off and it covers
+ * every standard that is not pinned; name one and it is the single-standard
+ * exception, which is only a block one day long.
+ */
+export function setBlock(
+  db: DB,
+  f: { startDate: ISODate; endDate: ISODate; lineageId?: number | null; reason?: string },
+): Block {
+  const [start, end] = f.startDate <= f.endDate
+    ? [f.startDate, f.endDate] : [f.endDate, f.startDate];
+  const info = db.prepare(
+    `INSERT INTO block (start_date, end_date, lineage_id, reason, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(start, end, f.lineageId ?? null, f.reason ?? '', now());
+  return listBlocks(db).find((b) => b.id === Number(info.lastInsertRowid))!;
 }
 
-export function clearExemption(db: DB, date: ISODate, lineageId: number): void {
-  db.prepare('DELETE FROM exemption WHERE date = ? AND lineage_id = ?').run(date, lineageId);
+export function clearBlock(db: DB, id: number): void {
+  db.prepare('DELETE FROM block WHERE id = ?').run(id);
 }
 
-export function listExemptions(db: DB) {
-  return db.prepare('SELECT date, lineage_id AS lineageId, reason FROM exemption ORDER BY date DESC')
-    .all();
+export function listBlocks(db: DB): Block[] {
+  return db.prepare(
+    `SELECT id, start_date AS startDate, end_date AS endDate,
+            lineage_id AS lineageId, reason
+       FROM block ORDER BY start_date DESC, id DESC`,
+  ).all() as Block[];
 }
 
-// ------------------------------------------------------------------ export
+/** Pinned standards do not take holidays. */
+export function setPinned(db: DB, lineageId: number, pinned: boolean): StandardVersion[] {
+  db.prepare('UPDATE standard SET pinned = ? WHERE lineage_id = ?')
+    .run(pinned ? 1 : 0, lineageId);
+  return currentStandards(db);
+}
 
 export function exportAll(db: DB) {
   const t = (name: string) => db.prepare(`SELECT * FROM ${name}`).all();
@@ -420,7 +485,7 @@ export function exportAll(db: DB) {
     day: t('day'),
     mark: t('mark'),
     step_check: t('step_check'),
-    exemption: t('exemption'),
+    block: t('block'),
   };
 }
 
@@ -441,10 +506,11 @@ export function exportCsv(db: DB): string {
   );
 
   for (const date of rangeDates(bounds.f, bounds.t)) {
-    const exempt = exemptionsFor(db, date);
+    const blocks = blocksOn(db, date);
     for (const s of standardsAt(db, date)) {
       const mark = marks.get(`${date}|${s.id}`);
-      const status = resolveCell(s, date, exempt.has(s.lineageId), mark?.status as any);
+      const status = resolveCell(
+        s, date, blockReason(blocks, s.lineageId) !== null, mark?.status as any);
       lines.push([
         date,
         ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekdayIndex(date)],

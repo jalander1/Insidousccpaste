@@ -14,9 +14,7 @@ export function maskAllows(mask: string, wd: WeekdayIndex): boolean {
 export function standardApplies(
   standard: Pick<StandardVersion, 'weekdays'>,
   date: ISODate,
-  exempt: boolean,
 ): boolean {
-  if (exempt) return false;
   return maskAllows(standard.weekdays, weekdayIndex(date));
 }
 
@@ -37,16 +35,22 @@ export function versionInForce<T extends { effectiveFrom: ISODate; effectiveTo: 
 }
 
 /**
- * The full cell state for one standard on one date. `released` and
- * `unanswered` are computed here and never stored.
+ * The full cell state for one standard on one date. Everything but kept and
+ * broken is computed here and never stored.
+ *
+ * The schedule is asked first: a standard the weekday mask does not ask for is
+ * `released` whether or not you were away, because there was nothing to miss.
+ * A block only reaches the days the standard would otherwise have been asked
+ * on, and a pinned standard ignores blocks entirely.
  */
 export function resolveCell(
-  standard: Pick<StandardVersion, 'weekdays'>,
+  standard: Pick<StandardVersion, 'weekdays' | 'pinned'>,
   date: ISODate,
-  exempt: boolean,
+  blocked: boolean,
   mark: 'kept' | 'broken' | undefined,
 ): CellStatus {
-  if (!standardApplies(standard, date, exempt)) return 'released';
+  if (!standardApplies(standard, date)) return 'released';
+  if (blocked && !standard.pinned) return 'away';
   return mark ?? 'unanswered';
 }
 

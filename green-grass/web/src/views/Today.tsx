@@ -88,6 +88,7 @@ function OnePercentRow({
   day, date, onChange,
 }: { day: DayView; date: string; onChange: (v: DayView | undefined) => void }) {
   const { onePercent } = day;
+  const away = onePercent.awayReason !== null;
   const [text, setText] = useState(onePercent.text);
   const unsaved = useRef(false);
 
@@ -103,6 +104,21 @@ function OnePercentRow({
   const set = async (status: 'hit' | 'missed') =>
     onChange(await track(api.onePercent(date,
       { status: onePercent.status === status ? 'unset' : status })));
+
+  if (away) {
+    return (
+      <div className="entry is-released is-away">
+        <div className="entry-main">
+          <div className="entry-body">
+            <div className="entry-num">the 1%</div>
+            <div className="entry-released-note">
+              Away{onePercent.awayReason ? ` — ${onePercent.awayReason}` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="entry">
@@ -176,7 +192,8 @@ function Entry({
 }) {
   const [reason, setReason] = useState(cell.reason);
   const [askReason, setAskReason] = useState(false);
-  const released = cell.status === 'released';
+  const away = cell.status === 'away';
+  const released = cell.status === 'released' || away;
   const unsaved = useRef(false);
 
   useEffect(() => { if (!unsaved.current) setReason(cell.reason); }, [cell.reason]);
@@ -201,14 +218,16 @@ function Entry({
     onChange(await track(api.step(date, stepId, checked)));
 
   return (
-    <div className={`entry${released ? ' is-released' : ''}`}>
+    <div className={`entry${released ? ' is-released' : ''}${away ? ' is-away' : ''}`}>
       <div className="entry-main">
         <div className="entry-body">
           <div className="entry-num">{String(index).padStart(2, '0')}</div>
           <div className="entry-name">{cell.name}</div>
           {released ? (
             <div className="entry-released-note">
-              {cell.exemptReason ? `Released — ${cell.exemptReason}` : 'Released today.'}
+              {away
+                ? `Away${cell.awayReason ? ` — ${cell.awayReason}` : ''}`
+                : 'Released today.'}
             </div>
           ) : (
             cell.definition && <div className="entry-def">{cell.definition}</div>

@@ -10,25 +10,33 @@ const FRI = '2026-08-28';
 const SAT = '2026-08-29';
 const SUN = '2026-08-30';
 
-const monToSat = { weekdays: 'MTWTFS-' };
-const everyDay = { weekdays: 'MTWTFSS' };
-const satOnly = { weekdays: '-----S-' };
+const monToSat = { weekdays: 'MTWTFS-', pinned: false };
+const everyDay = { weekdays: 'MTWTFSS', pinned: false };
+const satOnly = { weekdays: '-----S-', pinned: false };
 
 test('the weekday mask decides applicability', () => {
-  assert.equal(standardApplies(monToSat, MON, false), true);
-  assert.equal(standardApplies(monToSat, SAT, false), true);
-  assert.equal(standardApplies(monToSat, SUN, false), false, 'Sunday is the day of rest');
-  assert.equal(standardApplies(everyDay, SUN, false), true);
-  assert.equal(standardApplies(satOnly, MON, false), false);
-  assert.equal(standardApplies(satOnly, SAT, false), true);
+  assert.equal(standardApplies(monToSat, MON), true);
+  assert.equal(standardApplies(monToSat, SAT), true);
+  assert.equal(standardApplies(monToSat, SUN), false, 'Sunday is the day of rest');
+  assert.equal(standardApplies(everyDay, SUN), true);
+  assert.equal(standardApplies(satOnly, MON), false);
+  assert.equal(standardApplies(satOnly, SAT), true);
 });
 
-test('a per-date exemption releases the standard whatever the schedule says', () => {
-  assert.equal(standardApplies(everyDay, MON, true), false);
-  assert.equal(resolveCell(everyDay, MON, true, 'kept'), 'released');
+test('a block puts the day away, and a pin ignores the block', () => {
+  // Blocked: not asked, and — unlike a scheduled release — it ends the run.
+  assert.equal(resolveCell(everyDay, MON, true, undefined), 'away');
+  assert.equal(resolveCell(everyDay, MON, true, 'kept'), 'away');
+
+  // Pinned: the block does not reach it.
+  assert.equal(resolveCell({ ...everyDay, pinned: true }, MON, true, 'kept'), 'kept');
+  assert.equal(resolveCell({ ...everyDay, pinned: true }, MON, true, undefined), 'unanswered');
+
+  // The schedule still wins: nothing to miss on a day it was never asked.
+  assert.equal(resolveCell(monToSat, SUN, true, undefined), 'released');
 });
 
-test('cells resolve to the four states', () => {
+test('cells resolve to their states', () => {
   assert.equal(resolveCell(monToSat, MON, false, 'kept'), 'kept');
   assert.equal(resolveCell(monToSat, MON, false, 'broken'), 'broken');
   assert.equal(resolveCell(monToSat, MON, false, undefined), 'unanswered');

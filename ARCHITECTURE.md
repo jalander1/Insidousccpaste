@@ -73,7 +73,17 @@ points that only paid out in the Week are gone — none were looked at, and a
 tracker nobody reads is worse than none. What replaced the daily verdict is one
 number per line: the run you are on, and the longest it has ever been. The
 competition is with your own record. A routine step can now be marked optional:
-shown and tickable, but it never holds the routine open. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
+shown and tickable, but it never holds the routine open.
+
+**Exceptions became blocks** (migration `013_blocks`). A `block` row is a date
+range with an optional `lineage_id`: name a standard and it is the old
+single-day exception, leave it null and it covers the whole sheet. The old
+`exemption` table migrated into it and was dropped. The important change is to
+what a run does. There are now two ways for a day not to be asked, and they
+differ: a `released` day is one the weekday mask never asked for and is
+transparent to a run — making it opaque would cap the Saturday-only standard's
+run at one — while an `away` day is one the owner blocked out, and it ends the
+run, because nothing was kept. A `pinned` standard ignores blocks entirely. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
 
 ### 4.2 Days have *types*, and the schedule resolves against the day type
 

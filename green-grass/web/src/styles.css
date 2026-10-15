@@ -567,3 +567,17 @@ details.defs[open] summary::before { content: '– '; }
   padding: 26px 0;
   border-bottom: 1px solid var(--rule);
 }
+
+/* A day you blocked out: present, named, and plainly not in play. */
+.entry.is-away .entry-name { color: var(--dimmer); }
+.entry.is-away .entry-released-note {
+  color: var(--dimmer);
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+/* A pinned standard, in the list of what does not take holidays. */
+.mini.on { border-color: var(--brass); color: var(--brass); }

@@ -82,14 +82,15 @@ The sheet was always filled the morning after, so **before noon the app opens on
 yesterday**; after noon, on today. Navigate to any date with the arrows. Past
 days are never locked — honesty over ceremony.
 
-### The four states
+### The five states
 
 | | |
 |---|---|
 | **kept** | filled square |
 | **broken** | struck square — and it asks you why |
 | **unanswered** | empty square, not yet filled in |
-| **released** | a dot: not asked of you that day, and left out of the counting |
+| **released** | the schedule did not ask for it that day — left out of the counting, and transparent to a run |
+| **away** | you blocked the day out. Not asked, not tickable, and the run ends there |
 
 Sunday releases the Monday–Saturday standards — the wake-up and no TV — and
 Saturday is the only day the weekly review is asked. The routines, the
@@ -110,10 +111,12 @@ Each row carries the run it is on and the longest that run has ever been:
 *7 in a row · best 13*. When the run equals the record, the line says **your
 best** and turns brass, because from there every day is a new one.
 
-The competition is with yourself and nobody else. A released day is
-transparent — a Sunday never breaks a Monday-to-Saturday run — and a day you
-have not sat down to fill in yet does not break one either. Only a day you
-actually marked broken ends a run.
+The competition is with yourself and nobody else. A day the *schedule*
+released is transparent — a Sunday never breaks a Monday-to-Saturday run, and
+a Saturday-only standard would never get past one if it did — and a day you
+have not sat down to fill in yet does not break a run either. A day you marked
+broken ends one. So does a day you blocked out: you did not keep the standard,
+and the record should say so.
 
 ### Objectives and the 1%
 
@@ -141,12 +144,25 @@ you made it — so when the evening sit went from an hour to thirty minutes, las
 month's data still means what it meant. Retiring works the same way: it stops
 being asked, and the record stays.
 
-### Exceptions
+### Time away
 
-**Manage → Exceptions** releases one standard on one day, with a reason —
-illness, travel, a shift that made it genuinely impossible. Use it honestly and
-it keeps the data meaningful; use it freely and it stops meaning anything. The
-app will not stop you either way.
+**Manage → Time away** blocks out a stretch of days: a holiday, a week ill,
+one morning after a four-in-the-morning landing. Nothing is asked of you on
+those days and nothing can be ticked — the sheet greys out and says *Away —
+Italy* — and **a block ends every run it covers**. That is the point of it.
+Blocking days out is for keeping the sheet honest about where you were, not
+for protecting a number.
+
+Name a single standard and the block covers only that one; leave it on *every
+standard* and it covers the whole sheet, the 1% included.
+
+**Some standards do not take holidays.** Pin them under *Does not take
+holidays* and a block passes straight over them: they keep being asked, they
+can still be ticked, and their run keeps running wherever you are. *No porn or
+ejaculation* is pinned out of the box.
+
+A block hides what is recorded underneath it rather than deleting it — undo
+the block and every tick is exactly where you left it.
 
 ---
 
@@ -156,7 +172,8 @@ app will not stop you either way.
   kept or broken, work through the two routines step by step, and read the run
   on every line.
 - **Manage** — edit and reorder standards, edit routine steps, mark a step
-  optional, set exceptions, and get at your data.
+  optional, block out time away, pin what does not take holidays, and get at
+  your data.
 
 Two screens, on purpose. There was a Week grid and a Trends screen; neither got
 looked at, so both are gone, and the points that only ever paid out in the Week

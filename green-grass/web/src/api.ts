@@ -1,4 +1,4 @@
-import type { DayView, StandardVersion } from '../../shared/types.js';
+import type { Block, DayView, StandardVersion } from '../../shared/types.js';
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -37,16 +37,13 @@ export const api = {
     post<StandardVersion[]>('/api/standards/reorder', { lineageIds }),
   retire: (lineageId: number) => post<StandardVersion[]>(`/api/standards/${lineageId}/retire`),
 
-  exemptions: () =>
-    req<{ date: string; lineageId: number; reason: string }[]>('/api/exemptions'),
-  exempt: (date: string, lineageId: number, reason: string) =>
-    post<DayView>('/api/exemption', { date, lineageId, reason }),
-  unexempt: (date: string, lineageId: number) =>
-    req<DayView>('/api/exemption', {
-      method: 'DELETE',
-      body: JSON.stringify({ date, lineageId }),
-      headers: { 'Content-Type': 'application/json' },
-    }),
+  blocks: () => req<Block[]>('/api/blocks'),
+  block: (f: { startDate: string; endDate: string; lineageId: number | null; reason: string }) =>
+    post<Block[]>('/api/block', f),
+  unblock: (id: number) => req<Block[]>(`/api/block/${id}`, { method: 'DELETE' }),
+
+  pin: (lineageId: number, pinned: boolean) =>
+    post<StandardVersion[]>(`/api/standards/${lineageId}/pin`, { pinned }),
 
   dataLocation: () =>
     req<{ dbPath: string; backups: string; canReveal: boolean }>('/api/data-location'),

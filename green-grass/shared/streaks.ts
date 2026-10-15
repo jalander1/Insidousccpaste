@@ -3,10 +3,15 @@ import type { CellStatus, StreakInfo } from './types.js';
 /**
  * Streaks over a chronological run of resolved cell states.
  *
- * Released days are transparent: a Sunday never breaks a Mon–Sat streak, and
- * neither does a date the owner explicitly exempted. Version changes need no
- * special handling here — the caller resolves each date against whichever
- * version was in force, so a re-worded standard keeps its history.
+ * A release the *schedule* made is transparent: a Sunday never breaks a
+ * Mon–Sat run, and a Saturday-only standard would never get past one if it
+ * were not. A release *you* made — a block, a week away — is not transparent:
+ * nothing was kept on those days and the run ends, which is the whole reason
+ * for blocking the days out rather than leaving them blank.
+ *
+ * Version changes need no special handling here — the caller resolves each
+ * date against whichever version was in force, so a re-worded standard keeps
+ * its history.
  */
 export function computeStreaks(statuses: readonly CellStatus[]): StreakInfo {
   return { current: currentStreak(statuses), best: bestStreak(statuses) };
@@ -23,6 +28,7 @@ export function currentStreak(statuses: readonly CellStatus[]): number {
   for (let i = statuses.length - 1; i >= 0; i--) {
     const s = statuses[i];
     if (s === 'released') continue;
+    if (s === 'away') break;
     if (s === 'unanswered') {
       if (!started) continue; // not yet recorded
       break; // a gap in the middle is not evidence of keeping
@@ -34,7 +40,7 @@ export function currentStreak(statuses: readonly CellStatus[]): number {
   return count;
 }
 
-/** The longest run of kept days. An unanswered day mid-run ends it. */
+/** The longest run of kept days. An unanswered or away day mid-run ends it. */
 export function bestStreak(statuses: readonly CellStatus[]): number {
   let best = 0;
   let run = 0;

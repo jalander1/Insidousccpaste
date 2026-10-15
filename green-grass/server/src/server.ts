@@ -84,18 +84,25 @@ export function createApp(db: DB, opts: ServerOptions) {
     return store.currentStandards(db);
   }));
 
-  // ------------------------------------------------------------ exemptions
-  app.get('/api/exemptions', wrap(() => store.listExemptions(db)));
-  app.post('/api/exemption', wrap((req) => {
-    const { date, lineageId, reason } = req.body ?? {};
-    store.setExemption(db, date, Number(lineageId), reason ?? '');
-    return store.getDay(db, date);
+  // ---------------------------------------------------------------- blocks
+  app.get('/api/blocks', wrap(() => store.listBlocks(db)));
+  app.post('/api/block', wrap((req) => {
+    const { startDate, endDate, lineageId, reason } = req.body ?? {};
+    store.setBlock(db, {
+      startDate, endDate: endDate || startDate,
+      lineageId: lineageId === undefined || lineageId === null || lineageId === ''
+        ? null : Number(lineageId),
+      reason: reason ?? '',
+    });
+    return store.listBlocks(db);
   }));
-  app.delete('/api/exemption', wrap((req) => {
-    const { date, lineageId } = req.body ?? {};
-    store.clearExemption(db, date, Number(lineageId));
-    return store.getDay(db, date);
+  app.delete('/api/block/:id', wrap((req) => {
+    store.clearBlock(db, Number(req.params.id));
+    return store.listBlocks(db);
   }));
+
+  app.post('/api/standards/:lineageId/pin', wrap((req) =>
+    store.setPinned(db, Number(req.params.lineageId), !!req.body?.pinned)));
 
   // ---------------------------------------------------------------- export
   app.get('/api/export.json', (_req, res) => {

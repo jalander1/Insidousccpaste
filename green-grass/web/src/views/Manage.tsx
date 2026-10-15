@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { track } from '../save.js';
 import { Failed, useLoader } from '../load.js';
 import { DOW_LETTER, longDate, toISO, trackingDate } from '../../../shared/dates.js';
-import type { RoutineStep, StandardVersion } from '../../../shared/types.js';
+import type { Block, RoutineStep, StandardVersion } from '../../../shared/types.js';
 
 type Draft = {
   name: string; definition: string; kind: string; weekdays: string;
@@ -116,7 +116,7 @@ export default function Manage() {
         )}
       </div>
 
-      <Exemptions standards={standards} />
+      <Away standards={standards} onPinned={setStandards} />
       <DataPanel />
     </>
   );
@@ -265,89 +265,124 @@ function Editor({
   );
 }
 
-/** Exceptions to the rule — a requirement, not an edge case. */
-function Exemptions({ standards }: { standards: StandardVersion[] }) {
-  const [list, setList] = useState<{ date: string; lineageId: number; reason: string }[]>([]);
-  const [date, setDate] = useState(trackingDate());
+const dateBox = {
+  width: 'auto', fontFamily: 'var(--mono)', fontSize: 12,
+  background: 'var(--ink)', color: 'var(--bone)',
+  border: '1px solid var(--rule)', borderRadius: 2, padding: '8px 10px',
+} as const;
+
+/**
+ * Time away. A block is a stretch of days put out of reach — a holiday, a
+ * week ill, a single morning after a 4am landing. Leave the standard blank
+ * and it covers the whole sheet bar what is pinned.
+ */
+function Away({ standards, onPinned }: {
+  standards: StandardVersion[];
+  onPinned: (next: StandardVersion[]) => void;
+}) {
+  const [list, setList] = useState<Block[]>([]);
+  const [startDate, setStartDate] = useState(trackingDate());
+  const [endDate, setEndDate] = useState(trackingDate());
   const [lineageId, setLineageId] = useState<number | ''>('');
   const [reason, setReason] = useState('');
 
-  const load = useCallback(() => api.exemptions().then(setList), []);
+  const load = useCallback(() => api.blocks().then(setList), []);
   useEffect(() => { void load(); }, [load]);
 
   const nameOf = (id: number) =>
     standards.find((s) => s.lineageId === id)?.name ?? `Standard ${id}`;
+  const pinned = standards.filter((s) => s.pinned);
 
   return (
     <section className="panel">
-      <h2>Exceptions</h2>
+      <h2>Time away</h2>
       <p className="serif muted" style={{ fontSize: 15 }}>
-        Release a single standard on a single day — illness, travel, a shift
-        that made it impossible. A released day is not a broken day: it is left
-        out of the counting entirely.
+        Block out a stretch of days — a holiday, a week ill, one morning after a
+        late landing. Nothing is asked of you on those days and nothing can be
+        ticked, but <b>a block ends a run</b>: you did not keep the standard,
+        and the record says so. Only the schedule releases a day for free.
       </p>
 
       <div className="row wrap" style={{ marginTop: 14, gap: 8 }}>
-        <input
-          type="date" value={date} onChange={(e) => setDate(e.target.value)}
-          style={{
-            width: 'auto', fontFamily: 'var(--mono)', fontSize: 12,
-            background: 'var(--ink)', color: 'var(--bone)',
-            border: '1px solid var(--rule)', borderRadius: 2, padding: '8px 10px',
-          }}
-        />
+        <input type="date" value={startDate} style={dateBox}
+          onChange={(e) => {
+            setStartDate(e.target.value);
+            if (e.target.value > endDate) setEndDate(e.target.value);
+          }} />
+        <span className="dimmed" style={{ fontSize: 11 }}>to</span>
+        <input type="date" value={endDate} min={startDate} style={dateBox}
+          onChange={(e) => setEndDate(e.target.value)} />
         <select
-          value={lineageId}
+          value={lineageId} style={{ ...dateBox, width: 'auto' }}
           onChange={(e) => setLineageId(e.target.value ? Number(e.target.value) : '')}
-          style={{
-            fontFamily: 'var(--mono)', fontSize: 12, background: 'var(--ink)',
-            color: 'var(--bone)', border: '1px solid var(--rule)',
-            borderRadius: 2, padding: '8px 10px',
-          }}
         >
-          <option value="">Which standard…</option>
-          {standards.map((s) => (
-            <option key={s.id} value={s.lineageId}>{s.name}</option>
+          <option value="">Every standard</option>
+          {standards.map((st) => (
+            <option key={st.id} value={st.lineageId}>Only — {st.name}</option>
           ))}
         </select>
       </div>
       <div className="row" style={{ marginTop: 8 }}>
         <input
           type="text" value={reason} onChange={(e) => setReason(e.target.value)}
-          placeholder="Why (optional)"
+          placeholder="Why — e.g. Italy, a week"
         />
         <button
           className="mini"
-          disabled={lineageId === ''}
           onClick={async () => {
-            if (lineageId === '') return;
-            await track(api.exempt(date, lineageId, reason));
+            await track(api.block({
+              startDate, endDate, lineageId: lineageId === '' ? null : lineageId, reason,
+            }));
             setReason(''); setLineageId('');
             void load();
           }}
-        >release</button>
+        >block out</button>
       </div>
+
+      {lineageId === '' && pinned.length > 0 && (
+        <p className="dimmed" style={{ fontSize: 11, marginTop: 10 }}>
+          Still asked on those days: {pinned.map((st) => st.name).join(', ')}
+        </p>
+      )}
 
       {list.length > 0 && (
         <div style={{ marginTop: 18 }}>
-          {list.map((e) => (
-            <div className="row" key={`${e.date}-${e.lineageId}`} style={{ marginBottom: 7 }}>
-              <span className="dimmed" style={{ fontSize: 10, width: 92 }}>{e.date}</span>
+          {list.map((b) => (
+            <div className="row" key={b.id} style={{ marginBottom: 7 }}>
+              <span className="dimmed" style={{ fontSize: 10, width: 150 }}>
+                {b.startDate}{b.endDate !== b.startDate && ` → ${b.endDate}`}
+              </span>
               <span className="serif" style={{ flex: 1, fontSize: 14 }}>
-                {nameOf(e.lineageId)}
-                {e.reason && <span className="dimmed"> — {e.reason}</span>}
+                {b.lineageId === null ? 'Every standard' : nameOf(b.lineageId)}
+                {b.reason && <span className="dimmed"> — {b.reason}</span>}
               </span>
               <button
                 className="mini danger"
-                onClick={async () => {
-                  await track(api.unexempt(e.date, e.lineageId));
-                  void load();
-                }}
+                onClick={async () => { await track(api.unblock(b.id)); void load(); }}
               >undo</button>
             </div>
           ))}
         </div>
       )}
+
+      <h2 style={{ marginTop: 26 }}>Does not take holidays</h2>
+      <p className="serif muted" style={{ fontSize: 15 }}>
+        A pinned standard ignores a block: it keeps being asked, it can still be
+        ticked, and its run keeps running. Everything else greys out.
+      </p>
+      <div className="row wrap" style={{ marginTop: 12, gap: 8 }}>
+        {standards.map((st) => (
+          <button
+            key={st.id}
+            className={`mini${st.pinned ? ' on' : ''}`}
+            aria-pressed={st.pinned}
+            onClick={async () => {
+              const next = await track(api.pin(st.lineageId, !st.pinned));
+              if (next) onPinned(next);
+            }}
+          >{st.name}</button>
+        ))}
+      </div>
     </section>
   );
 }

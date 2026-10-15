@@ -82,6 +82,19 @@ require(path.resolve(__dirname, '..', 'dist', 'app', 'main.cjs'));
   checks.push(['a mark round-trips', marked.status === 'kept']);
   checks.push(['and starts a run of one', marked.streak.current === 1]);
 
+  // A block puts the sheet away and ends the run; a pinned standard ignores it.
+  await fetch(`${loadedUrl}/api/block`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ startDate: today, endDate: today, reason: 'Italy' }),
+  });
+  const blocked = await (await fetch(`${loadedUrl}/api/day/${today}`)).json();
+  const obj = blocked.cells.find((c) => c.name === 'Primary objective');
+  const pin = blocked.cells.find((c) => c.name === 'No porn or ejaculation');
+  checks.push(['a block puts the day away', obj.status === 'away' && obj.awayReason === 'Italy']);
+  checks.push(['and ends the run it was on', obj.streak.current === 0 && obj.streak.best === 0]);
+  checks.push(['a pinned standard ignores the block',
+    pin.status === 'unanswered' && pin.awayReason === null]);
+
   // Week and trends are gone: their paths now fall through to the SPA.
   const gone = await Promise.all([`/api/trends?from=${today}&to=${today}`, `/api/week/${today}`]
     .map(async (u) => (await fetch(loadedUrl + u)).headers.get('content-type') || ''));
