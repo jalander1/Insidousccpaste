@@ -4,24 +4,26 @@ A proof-of-concept redesign of the Our House cocktail & wine bar site (Glouceste
 
 ## View it
 
-- **Quickest:** open `dist/our-house.html` in any browser. It's one self-contained file with both pages (the Menu link switches between them), so you can email it or AirDrop it to a phone. `dist/index.html` and `dist/menu.html` are the same pages as separate files.
+- **Quickest:** open `dist/our-house.html` in any browser. It's one self-contained file with all three pages (the links switch between them), so you can email it or AirDrop it to a phone. `dist/index.html`, `dist/menu.html` and `dist/events.html` are the same pages as separate files.
 - **Working copy:** open `index.html`, or serve the folder (`python3 -m http.server`) and visit `http://localhost:8000`.
 
 After editing anything, rebuild the single file with `python3 tools/build_standalone.py`.
 
 ## What's on the page
 
-Two pages:
+Three pages, sharing one header (tasting banner, navigation) and footer (visit, hours, contact):
 
-- **Home** (`index.html`): photo hero with the logo (the header sits over the photo and turns solid on scroll), About, reviews, Visit (address and hours) and Contact.
-- **Menu** (`menu.html`): the full drinks menu from the printed menu, laid out as a menu book with tabs for Cocktails, Wine, Beer & cider and Zero & low.
+- **Home** (`index.html`): photo hero with the logo, About, and Cocktails / Wine / Events.
+- **Menu** (`menu.html`): the full drinks menu from the printed menu, laid out as a menu book with tabs.
+- **Events** (`events.html`): this month's wine and cocktail tastings, each with a "Book your place" email button.
 
 ## Updating things
 
-- **Opening hours:** edit the hours list in the Visit section of `index.html`.
+- **This month's events:** edit the event cards in `events.html` (date line, title, description).
+- **Opening hours:** edit the Hours column in the footer (same in all three pages).
 - **Menu:** plain HTML in `menu.html`. Copy an `<li class="item">` to add a drink.
-- **Photos:** drop new files into `images/` with the same names. The photos are crops from screenshots, so full-size originals will look sharper.
-- **Contact form:** opens the visitor's email app addressed to info@ourhousebar.co.uk. Swap for a form service to receive messages directly.
+- **Photos:** drop new files into `images/` with the same names. `exterior.jpg` was upscaled 2× (EDSR); the rest are the originals as supplied.
+- **Bookings:** the banner and event buttons open an email to info@ourhousebar.co.uk with the subject filled in. Swap for a booking service when ready.
 
 ## Before going live
 
@@ -31,5 +33,5 @@ Two pages:
 
 ## Credits
 
-- Logo traced to vector from the existing brand artwork.
+- Logo traced to vector from the existing brand artwork; the two script lines are set in Yellowtail (converted to outlines) for clarity.
 - Fonts: Fraunces and DM Sans (SIL OFL 1.1). See `fonts/LICENSE.txt`.

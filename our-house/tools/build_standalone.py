@@ -2,8 +2,8 @@
 """Bundle the site into self-contained HTML files (fonts, images, CSS and JS inlined).
 
 Usage:  python3 tools/build_standalone.py
-Output: dist/index.html and dist/menu.html (one file per page), plus
-        dist/our-house.html: both pages in one file, for emailing or opening on a phone.
+Output: dist/index.html, dist/menu.html and dist/events.html (one file per page), plus
+        dist/our-house.html: all pages in one file, for emailing or opening on a phone.
 """
 import base64
 import mimetypes
@@ -20,16 +20,15 @@ mimetypes.add_type("image/svg+xml", ".svg")
 ROUTER = """
 <script>
 (() => {
-  const home = document.querySelector('[data-page="home"]');
-  const menu = document.querySelector('[data-page="menu"]');
+  const pages = [...document.querySelectorAll('[data-page]')];
+  const home = pages[0];
   const route = () => {
     const id = decodeURIComponent(location.hash.slice(1));
     const target = id && document.getElementById(id);
-    const showMenu = id === 'menu-page' || (target && menu.contains(target));
-    menu.hidden = !showMenu;
-    home.hidden = showMenu;
-    if (target && id !== 'menu-page') target.scrollIntoView();
-    else if (showMenu || !id) window.scrollTo(0, 0);
+    const page = (target && pages.find((p) => p === target || p.contains(target))) || home;
+    pages.forEach((p) => { p.hidden = p !== page; });
+    if (target && target !== page) target.scrollIntoView();
+    else window.scrollTo(0, 0);
     window.dispatchEvent(new Event('scroll'));
   };
   window.addEventListener('hashchange', route);
@@ -66,27 +65,34 @@ def check(html: str, name: str, allowed: str) -> None:
         raise SystemExit(f"{name}: un-inlined local references: {leftovers}")
 
 
+PAGES = (("index.html", "home"), ("menu.html", "menu"), ("events.html", "events"))
+
+
 def main() -> None:
     DIST.mkdir(exist_ok=True)
-    home = (ROOT / "index.html").read_text(encoding="utf-8")
-    menu = (ROOT / "menu.html").read_text(encoding="utf-8")
+    html = {name: (ROOT / name).read_text(encoding="utf-8") for name, _ in PAGES}
 
-    for name, html in (("index.html", home), ("menu.html", menu)):
-        out = inline(html)
-        check(out, name, "|index\\.html|menu\\.html")
+    for name, _ in PAGES:
+        out = inline(html[name])
+        check(out, name, "|index\\.html|menu\\.html|events\\.html")
         (DIST / name).write_text(out, encoding="utf-8")
 
-    menu_main = re.search(r'<main id="main">(.*?)</main>', menu, re.S).group(1)
-    menu_main = menu_main.replace('href="index.html#', 'href="#').replace('href="index.html"', 'href="#top"')
-    combined = replace_once(home, '<main id="main">', '<main id="main" data-page="home">')
-    combined = replace_once(combined, "  </main>", f'  </main>\n  <main id="menu-page" data-page="menu" hidden>{menu_main}</main>')
-    combined = combined.replace('href="menu.html"', 'href="#menu-page"')
+    # Combined file: every page's <main> in one document, switched by the URL hash.
+    combined = replace_once(html["index.html"], '<main id="main">', '<main id="main" data-page="home">')
+    extra = ""
+    for name, key in PAGES[1:]:
+        body = re.search(r'<main id="main">(.*?)</main>', html[name], re.S).group(1)
+        extra += f'\n  <main id="{key}-page" data-page="{key}" hidden>{body}</main>'
+    combined = replace_once(combined, "  </main>", "  </main>" + extra)
+    combined = combined.replace('href="index.html#', 'href="#').replace('href="index.html"', 'href="#top"')
+    for name, key in PAGES[1:]:
+        combined = combined.replace(f'href="{name}"', f'href="#{key}-page"')
     combined = replace_once(combined, '<script src="js/main.js" defer></script>', '<script src="js/main.js" defer></script>' + ROUTER)
     combined = inline(combined)
     check(combined, "our-house.html", "")
     (DIST / "our-house.html").write_text(combined, encoding="utf-8")
 
-    for f in ("index.html", "menu.html", "our-house.html"):
+    for f in [n for n, _ in PAGES] + ["our-house.html"]:
         print(f"Wrote dist/{f} ({(DIST / f).stat().st_size / 1024:.0f} KB)")
 
 
