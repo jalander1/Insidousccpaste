@@ -5,9 +5,11 @@
 
   // Header turns solid once you scroll off the hero photo
   const header = $('[data-header]');
-  const hero = $('[data-hero]');
-  // Pages without a hero photo (the menu) keep the solid header
-  const onScroll = () => header.classList.toggle('is-scrolled', !hero || window.scrollY > hero.offsetHeight - 90);
+  // Uses whichever page's photo header is showing (both pages have one)
+  const onScroll = () => {
+    const hero = $$('[data-hero]').find((h) => h.offsetHeight > 0);
+    header.classList.toggle('is-scrolled', !hero || window.scrollY > hero.offsetHeight - 90);
+  };
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);
   onScroll();
@@ -67,17 +69,6 @@
   } else {
     reveals.forEach((el) => el.classList.add('is-in'));
   }
-
-  // Contact form: opens the visitor's email app, filled in
-  const form = $('[data-form]');
-  if (form) form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (!form.reportValidity()) return;
-    const d = new FormData(form);
-    const body = `${d.get('message')}\n\n${d.get('name')}\n${d.get('email')}`;
-    window.location.href = `mailto:info@ourhousebar.co.uk?subject=${encodeURIComponent(`Message from ${d.get('name')}`)}&body=${encodeURIComponent(body)}`;
-    $('[data-sent]').hidden = false;
-  });
 
   $$('[data-year]').forEach((el) => { el.textContent = new Date().getFullYear(); });
 })();

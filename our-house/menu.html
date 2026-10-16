@@ -17,6 +17,10 @@
   <a class="skip" href="#main">Skip to content</a>
 
   <header class="site-header" data-header>
+    <a class="promo" href="mailto:info@ourhousebar.co.uk?subject=Wine%20tasting%20booking&amp;body=Hi%2C%20I%E2%80%99d%20like%20to%20book%20a%20place%20at%20your%20next%20wine%20tasting.">
+      <span class="promo-long">Monthly wine &amp; spirits tastings.</span><span class="promo-short">Monthly wine tastings.</span>
+      <strong>Tap here to book</strong>
+    </a>
     <div class="header-inner">
       <nav class="nav" aria-label="Main">
         <a href="menu.html">Menu</a>
@@ -51,13 +55,17 @@
   </div>
 
   <main id="main">
+    <section class="menu-hero" data-hero>
+      <img src="images/wine.jpg" alt="" width="1360" height="907">
+      <div class="menu-hero-text">
+        <h1 class="display" id="menu-title">The Menu</h1>
+        <p class="lede">Our list changes every month. Here’s a taste; tonight’s might be even better.</p>
+      </div>
+    </section>
+
     <!-- ============ Menu ============ -->
     <section class="menu-section section" id="menu" aria-labelledby="menu-title">
       <div class="wrap">
-        <header class="section-head" data-reveal>
-          <h1 class="display" id="menu-title">The Menu</h1>
-          <p class="lede">Our list changes every month. Here's a taste. Tonight's might be even better.</p>
-        </header>
 
         <div class="menu-tabs" role="tablist" aria-label="Drinks menu">
           <button class="menu-tab" role="tab" id="tab-cocktails" aria-controls="panel-cocktails" aria-selected="true" data-tab="cocktails">Cocktails</button>
@@ -252,6 +260,7 @@
         <p class="menu-foot">Prices in £. Allergies or dietary needs? Just ask the team. Peckish? Ask about our charcuterie boards.</p>
       </div>
     </section>
+    <div class="band"><img src="images/bartender.jpg" alt="Our bartender shaking a cocktail behind the bar" width="1360" height="907" loading="lazy"></div>
   </main>
 
   <footer class="footer">
@@ -260,9 +269,20 @@
         <use href="#oh-script-top"/><use href="#oh-frame"/><use href="#oh-title"/><use href="#oh-tagline"/><use href="#oh-script-bottom"/>
       </svg>
       <div class="footer-cols">
-        <p>Unit 10, Gloucester Food Dock<br>23–29 Commercial Road<br>Gloucester GL1 2EP</p>
-        <p>Tue–Wed 4pm–10pm · Thu 1pm–10pm<br>Fri–Sat 1pm–midnight · Sun 1pm–9pm<br>Mon closed</p>
-        <p><a href="mailto:info@ourhousebar.co.uk">info@ourhousebar.co.uk</a><br><a href="tel:+447882125969">07882 125969</a><br><a href="https://www.instagram.com/ourhouse_bar/" target="_blank" rel="noopener">Instagram</a></p>
+        <div id="visit">
+          <h3>Visit</h3>
+          <p>Unit 10, Gloucester Food Dock<br>23–29 Commercial Road<br>Gloucester GL1 2EP</p>
+          <a class="footer-link" href="https://www.google.com/maps/dir/?api=1&amp;destination=Our+House+Gloucester+Food+Dock+GL1+2EP" target="_blank" rel="noopener">directions</a>
+        </div>
+        <div>
+          <h3>Hours</h3>
+          <p>Tue – Wed · 4pm – 10pm<br>Thu · 1pm – 10pm<br>Fri – Sat · 1pm – midnight<br>Sun · 1pm – 9pm<br>Mon · closed</p>
+        </div>
+        <div id="contact">
+          <h3>Contact</h3>
+          <p><a href="mailto:info@ourhousebar.co.uk">info@ourhousebar.co.uk</a><br><a href="tel:+447882125969">07882 125969</a><br><a href="https://www.instagram.com/ourhouse_bar/" target="_blank" rel="noopener">@ourhouse_bar</a></p>
+          <p class="footer-note">Walk-ins welcome. Groups of six or more, please get in touch.</p>
+        </div>
       </div>
       <p class="footer-base">Please drink responsibly · <a href="https://www.drinkaware.co.uk" target="_blank" rel="noopener">drinkaware.co.uk</a> · © <span data-year>2026</span> Our House</p>
     </div>
