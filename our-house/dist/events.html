@@ -199,7 +199,6 @@ button { font: inherit; color: inherit; }
 .js .lg-tagline       { animation: fade 1s 1.1s var(--ease) both; }
 .js .lg-script-bottom { animation: write 1.2s 1.25s cubic-bezier(.6, .05, .3, 1) both; }
 .js .hero-welcome     { animation: fade 1s 1.5s var(--ease) both; }
-.hero-phone-title, .hero-phone-sub { display: none; }
 .js .hero-links       { animation: fade 1s 1.7s var(--ease) both; }
 @keyframes write { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @keyframes frame { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -523,32 +522,17 @@ button { font: inherit; color: inherit; }
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .nav, .insta, .header-cta { display: none; }
-  .header-inner { grid-template-columns: 1fr auto; }
-  /* Bisous-style: logo centred in the bar, headline (not a second logo) on the photo */
+  /* Phone top: tasting banner, menu button over the photo, full logo on the photo.
+     After scrolling, a cream bar with the small logo takes over. */
   .header-inner { grid-template-columns: 44px 1fr 44px; }
-  .brand { grid-column: 2; grid-row: 1; justify-self: center; opacity: 1; pointer-events: auto; }
+  .brand { grid-column: 2; grid-row: 1; justify-self: center; }
   .header-actions { grid-column: 3; grid-row: 1; }
-  .hero-logo, .hero-welcome { display: none; }
-  .hero-phone-title {
-    display: block; margin: 0;
-    font-family: var(--display); font-style: italic; font-weight: 400;
-    font-variation-settings: "SOFT" 100, "WONK" 1;
-    font-size: clamp(52px, 15vw, 84px); line-height: 1; letter-spacing: -.01em;
-    color: var(--cream); text-shadow: 0 2px 24px rgba(0, 0, 0, .45);
-  }
-  .hero-phone-sub {
-    display: block; margin: 16px 0 0;
-    font-size: 13px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase;
-    color: var(--apricot);
-  }
-  .js .hero-phone-title { animation: fade 1s .2s var(--ease) both; }
-  .js .hero-phone-sub   { animation: fade 1s .45s var(--ease) both; }
-  .js .hero-links       { animation-delay: .7s; }
+  .hero-welcome { display: none; }
+  .hero-logo { width: min(560px, 100%); }
   .header-inner { width: 100%; padding-inline: var(--gutter); }
-  .site-header, .site-header.is-scrolled { background: var(--cream); box-shadow: 0 1px 0 rgba(42, 22, 14, .15); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .site-header.is-scrolled { background: var(--cream); box-shadow: 0 1px 0 rgba(42, 22, 14, .15); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .mobile-nav { background: var(--cream); }
-  .nav-toggle { color: var(--cocoa); }
-  .hero { min-height: calc(76svh - var(--top-h)); height: auto; padding-top: calc(var(--top-h) + 48px); padding-bottom: 56px; }
+  .hero { min-height: 78svh; height: auto; padding-top: calc(var(--top-h) + 24px); padding-bottom: 56px; }
   .hero-links { margin-top: clamp(40px, 7vh, 64px); }
 
   /* Centred text, like the reference */
