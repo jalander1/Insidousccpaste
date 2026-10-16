@@ -513,7 +513,8 @@ button { font: inherit; color: inherit; }
   .header-inner { grid-template-columns: 1fr auto; }
   .brand { justify-self: start; opacity: 1; pointer-events: auto; }
   .header-inner { width: 100%; padding-inline: var(--gutter); }
-  .site-header { background: var(--apricot); box-shadow: 0 1px 0 rgba(136, 37, 41, .2); }
+  .site-header, .site-header.is-scrolled { background: var(--cream); box-shadow: 0 1px 0 rgba(42, 22, 14, .15); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .mobile-nav { background: var(--cream); }
   .nav-toggle { color: var(--cocoa); }
   .hero { min-height: 0; height: auto; padding-top: calc(var(--top-h) + 64px); padding-bottom: 72px; }
   .menu-hero { min-height: 0; padding-top: calc(var(--top-h) + 64px); padding-bottom: 64px; }
