@@ -64,7 +64,7 @@
   if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const io = new IntersectionObserver((entries) => entries.forEach((e) => {
       if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
-    }), { threshold: 0.12 });
+    }), { threshold: 0, rootMargin: '0px 0px -8% 0px' });
     reveals.forEach((el) => io.observe(el));
   } else {
     reveals.forEach((el) => el.classList.add('is-in'));
