@@ -171,9 +171,12 @@ the block and every tick is exactly where you left it.
 - **Today** — the ledger, and the only screen that matters. Tick each standard
   kept or broken, work through the two routines step by step, and read the run
   on every line.
-- **Manage** — edit and reorder standards, edit routine steps, mark a step
-  optional, block out time away, pin what does not take holidays, and get at
-  your data.
+- **Manage** — edit standards and routine steps, mark a step optional, block
+  out time away, pin what does not take holidays, and get at your data.
+  **Drag anything by its grip to reorder it** — the standards on the sheet,
+  the steps inside a routine. The list moves under the cursor as you go, so
+  you can see where something lands before you let go. The grip is a button,
+  so the arrow keys do the same job.
 
 Two screens, on purpose. There was a Week grid and a Trends screen; neither got
 looked at, so both are gone, and the points that only ever paid out in the Week

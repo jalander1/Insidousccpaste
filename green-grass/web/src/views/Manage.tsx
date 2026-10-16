@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { track } from '../save.js';
 import { Failed, useLoader } from '../load.js';
+import { useSortable } from '../sortable.js';
 import { DOW_LETTER, longDate, toISO, trackingDate } from '../../../shared/dates.js';
 import type { Block, RoutineStep, StandardVersion } from '../../../shared/types.js';
 
@@ -20,15 +21,15 @@ export default function Manage() {
 
   if (error) return <Failed error={error} retry={retry} />;
 
-  const move = async (i: number, dir: -1 | 1) => {
-    const next = [...standards];
-    const j = i + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[i], next[j]] = [next[j], next[i]];
-    setStandards(next);
+  const save = async (next: StandardVersion[]) => {
     await track(api.reorder(next.map((s) => s.lineageId)));
     void load();
   };
+  const sort = useSortable({
+    items: standards,
+    setItems: setStandards,
+    onDrop: (next) => void save(next),
+  });
 
   return (
     <>
@@ -43,7 +44,11 @@ export default function Manage() {
       {standards.map((s, i) => (
         // Keyed by the version row, not the lineage: two live rows on one
         // lineage used to collide here and take the list apart.
-        <div className="manage-item" key={s.id}>
+        <div
+          className={`manage-item${sort.dragging === i ? ' is-dragging' : ''}`}
+          key={s.id}
+          {...sort.row(i)}
+        >
           {editing === s.lineageId ? (
             <Editor
               initial={{
@@ -63,12 +68,11 @@ export default function Manage() {
           ) : (
             <>
               <div className="manage-head">
+                <button {...sort.grip(i)}>⠿</button>
                 <span className="dimmed" style={{ fontSize: 10, paddingTop: 4 }}>
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <span className="name">{s.name}</span>
-                <button className="mini" onClick={() => move(i, -1)} aria-label="Move up">↑</button>
-                <button className="mini" onClick={() => move(i, 1)} aria-label="Move down">↓</button>
                 <button className="mini" onClick={() => setEditing(s.lineageId)}>edit</button>
                 <button
                   className="mini danger"
@@ -153,6 +157,13 @@ function Editor({
   const setStep = (i: number, patch: Partial<Draft['steps'][number]>) =>
     setD({ ...d, steps: d.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
 
+  // The order the steps are dragged into is the order they are asked in: it is
+  // written straight back as step_order when the standard is saved.
+  const sort = useSortable({
+    items: d.steps,
+    setItems: (steps) => setD({ ...d, steps }),
+  });
+
   return (
     <div>
       <div className="field">
@@ -199,12 +210,19 @@ function Editor({
         <div className="field">
           <label>Steps</label>
           {d.steps.map((s, i) => (
-            <div key={i} style={{ marginBottom: 12, borderLeft: '1px solid var(--rule)', paddingLeft: 12 }}>
-              <input
-                type="text" value={s.name}
-                onChange={(e) => setStep(i, { name: e.target.value })}
-                placeholder="Step"
-              />
+            <div
+              key={i}
+              className={`step-edit${sort.dragging === i ? ' is-dragging' : ''}`}
+              {...sort.row(i)}
+            >
+              <div className="row" style={{ gap: 8 }}>
+                <button {...sort.grip(i)}>⠿</button>
+                <input
+                  type="text" value={s.name}
+                  onChange={(e) => setStep(i, { name: e.target.value })}
+                  placeholder="Step"
+                />
+              </div>
               <input
                 type="text" value={s.detail}
                 onChange={(e) => setStep(i, { detail: e.target.value })}

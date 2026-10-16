@@ -581,3 +581,36 @@ details.defs[open] summary::before { content: '– '; }
 
 /* A pinned standard, in the list of what does not take holidays. */
 .mini.on { border-color: var(--brass); color: var(--brass); }
+
+/* Drag to reorder: the grip is the only part that starts a drag, so selecting
+   text in a field never turns into one. */
+.grip {
+  flex: none;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--dimmer);
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 5px;
+  border-radius: 2px;
+  cursor: grab;
+  touch-action: none;
+}
+.grip:hover { color: var(--bone); border-color: var(--rule); }
+.grip:active { cursor: grabbing; }
+.grip:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; color: var(--bone); }
+
+.manage-item.is-dragging,
+.step-edit.is-dragging {
+  opacity: .45;
+  background: var(--panel-2);
+}
+
+.step-edit {
+  margin-bottom: 12px;
+  border-left: 1px solid var(--rule);
+  padding-left: 4px;
+}
+/* The grip costs a row its slack, so the controls under a step wrap rather
+   than run off the side of a narrow window. */
+.step-edit .row { flex-wrap: wrap; row-gap: 6px; }
