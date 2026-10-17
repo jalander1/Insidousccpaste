@@ -97,10 +97,20 @@ Saturday is the only day the weekly review is asked. The routines, the
 objectives and the rest of the abstains run every day. So does an exception you
 set yourself.
 
-Steps within a routine can be released too, so only tonight's steps are shown:
+Steps within a routine can be released too, so only today's steps are shown.
 Friday and Saturday are the late shifts, so a podcast stands in for the book —
 off the Alexa, so the phone still goes to the study and nothing digital comes
-up to the room. Ticking what applies is enough to keep the
+up to the room. And the morning routine thins out at the weekend: reading, the
+exercises and TRE run Monday to Friday, the meditation runs every day, and on
+Saturday and Sunday it is the whole routine.
+
+That last one is worth understanding as a design, not a concession. The
+routine is a single gate, and the phone rule is bolted to the far end of it —
+so a five-step Saturday priced getting out of bed at ninety minutes before you
+could look at your phone. A one-step Saturday prices it at thirty, without the
+rule having to weaken. It also takes the cliff out of the week: a light
+Saturday is still a kept Saturday, so the heaviest day stops being the most
+likely place for a run to break. Ticking what applies is enough to keep the
 routine. A released day never breaks a streak and never counts against a
 percentage. An unanswered day is not counted as a failure either — it is simply
 not evidence.

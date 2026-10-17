@@ -474,3 +474,33 @@ test('a block takes the 1% with the rest of the sheet', () => {
   assert.equal(quiet.onePercent.streak.current, 3);
   db.close();
 });
+
+test('the weekend morning is the meditation and nothing else', () => {
+  const { db } = tempDb();
+  const applies = (date: string) =>
+    byName(store.getDay(db, date).cells, 'Morning routine')
+      .steps.filter((s) => s.applicable).map((s) => s.name);
+
+  // Monday to Friday the routine is unchanged.
+  assert.deepEqual(applies(MON), [
+    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate — 30 minutes',
+  ]);
+  assert.deepEqual(applies('2026-08-28'), [
+    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate — 30 minutes',
+  ], 'Friday too');
+
+  // Saturday and Sunday it is one thing.
+  for (const weekend of [SAT, SUN]) {
+    assert.deepEqual(applies(weekend), ['Meditate — 30 minutes'], weekend);
+  }
+
+  // And one tick closes it, so a light Saturday is still a kept Saturday.
+  const sit = byName(store.getDay(db, SAT).cells, 'Morning routine')
+    .steps.find((s) => s.name === 'Meditate — 30 minutes')!;
+  store.setStep(db, SAT, sit.id, true);
+  assert.equal(byName(store.getDay(db, SAT).cells, 'Morning routine').status, 'kept');
+
+  // The standard itself still runs every day — only its steps thin out.
+  assert.equal(byName(store.currentStandards(db), 'Morning routine').weekdays, 'MTWTFSS');
+  db.close();
+});
