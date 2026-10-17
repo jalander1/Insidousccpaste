@@ -57,7 +57,7 @@ test('the morning routine is four non-negotiables and one bonus', () => {
   const { db } = tempDb();
   const morning = byName(store.currentStandards(db), 'Morning routine');
   assert.deepEqual(morning.steps.map((s) => s.name), [
-    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate — 30 minutes',
+    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate',
   ]);
   assert.deepEqual(morning.steps.filter((s) => s.optional).map((s) => s.name),
     ['Full exercise session']);
@@ -483,20 +483,24 @@ test('the weekend morning is the meditation and nothing else', () => {
 
   // Monday to Friday the routine is unchanged.
   assert.deepEqual(applies(MON), [
-    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate — 30 minutes',
+    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate',
   ]);
   assert.deepEqual(applies('2026-08-28'), [
-    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate — 30 minutes',
+    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate',
   ], 'Friday too');
 
   // Saturday and Sunday it is one thing.
   for (const weekend of [SAT, SUN]) {
-    assert.deepEqual(applies(weekend), ['Meditate — 30 minutes'], weekend);
+    assert.deepEqual(applies(weekend), ['Meditate'], weekend);
   }
+
+  // The morning sit carries no number; the evening one still does.
+  assert.ok(byName(store.currentStandards(db), 'Evening routine')
+    .steps.some((s) => s.name === 'Meditate — 30 minutes'));
 
   // And one tick closes it, so a light Saturday is still a kept Saturday.
   const sit = byName(store.getDay(db, SAT).cells, 'Morning routine')
-    .steps.find((s) => s.name === 'Meditate — 30 minutes')!;
+    .steps.find((s) => s.name === 'Meditate')!;
   store.setStep(db, SAT, sit.id, true);
   assert.equal(byName(store.getDay(db, SAT).cells, 'Morning routine').status, 'kept');
 
