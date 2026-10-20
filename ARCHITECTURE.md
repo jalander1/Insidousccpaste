@@ -83,7 +83,17 @@ what a run does. There are now two ways for a day not to be asked, and they
 differ: a `released` day is one the weekday mask never asked for and is
 transparent to a run — making it opaque would cap the Saturday-only standard's
 run at one — while an `away` day is one the owner blocked out, and it ends the
-run, because nothing was kept. A `pinned` standard ignores blocks entirely. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
+run, because nothing was kept. A `pinned` standard ignores blocks entirely.
+
+**The record was reset a second time on 21 October 2026** (migration
+`016_reset_for_camp`), to open with a six-week fight camp and a rewritten brand
+plan. Nine standards, down from eleven. The three objectives went to a weekly
+paper sheet, ejaculation to a printed forty-day retention calendar, and the
+room-tech and whole-food rules stopped being tracked at all because they happen
+without asking. A run, the supplements and an intermittent fast came in. The
+pattern to notice across both resets: every revision has removed obligation,
+and the app's job is to follow the life rather than hold it to a list it has
+outgrown. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
 
 ### 4.2 Days have *types*, and the schedule resolves against the day type
 

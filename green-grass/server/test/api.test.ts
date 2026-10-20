@@ -28,102 +28,93 @@ const PREV = '2026-08-23';
 const byName = <T extends { name: string }>(cells: T[], name: string): T =>
   cells.find((c) => c.name.startsWith(name))!;
 
-test('the seed is the eleven standards, objectives among them', () => {
+test('the seed is the nine standards of the camp', () => {
   const { db } = tempDb();
   const standards = store.currentStandards(db);
-  assert.equal(standards.length, 11, 'eight standards and the three objectives');
+  assert.deepEqual(standards.map((s) => s.name), [
+    'Wake by 09:00',
+    'Morning routine',
+    'Intermittent fasting',
+    'Supplements',
+    'No porn',
+    'No TV or films',
+    'No phone or technology on the toilet',
+    'Weekly review & plan',
+    'Evening routine',
+  ]);
 
-  assert.equal(standards[0].name, 'Wake by 09:00', 'the wake-up leads');
-  assert.equal(standards[0].weekdays, 'MTWTFS-', 'Sunday he can sleep in');
-  assert.equal(byName(standards, 'Morning routine').weekdays, 'MTWTFSS', 'every day');
-  assert.equal(byName(standards, 'Evening routine').weekdays, 'MTWTFSS', 'every day');
-  assert.equal(byName(standards, 'Evening routine').steps.length, 7);
+  assert.equal(byName(standards, 'Wake by').weekdays, 'MTWTFS-', 'Sunday he can sleep in');
+  assert.equal(byName(standards, 'Intermittent fasting').weekdays, 'MTWTF--', 'weekdays only');
   assert.equal(byName(standards, 'No TV').weekdays, 'MTWTFS-', 'Sunday is open');
   assert.equal(byName(standards, 'Weekly review').weekdays, '-----S-', 'Saturday only');
+  assert.equal(byName(standards, 'No porn').pinned, true, 'this one does not take holidays');
 
-  // Porn and ejaculation are one standard now: either one breaks it.
-  assert.equal(standards.filter((x) => /porn|ejacul/i.test(x.name)).length, 1);
-  assert.ok(byName(standards, 'No porn').definition.includes('either one breaks it'));
-
-  // The room standard is every night, because the podcast plays off the Alexa.
-  assert.equal(byName(standards, 'No digital technology').weekdays, 'MTWTFSS');
-
-  // Nothing typed in: every standard is a tick.
-  assert.ok(standards.every((x) => ['binary', 'abstain', 'checklist'].includes(x.kind)));
+  // Ejaculation is on the printed camp calendar now; the objectives are on
+  // the weekly sheet. Neither belongs here twice.
+  assert.ok(!standards.some((s) => /ejacul/i.test(s.name)));
+  assert.ok(!standards.some((s) => /objective/i.test(s.name)));
   db.close();
 });
 
-test('the morning routine is four non-negotiables and one bonus', () => {
+test('the morning is a run on a weekday and the light at the weekend', () => {
   const { db } = tempDb();
-  const morning = byName(store.currentStandards(db), 'Morning routine');
-  assert.deepEqual(morning.steps.map((s) => s.name), [
-    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate',
-  ]);
-  assert.deepEqual(morning.steps.filter((s) => s.optional).map((s) => s.name),
-    ['Full exercise session']);
-  assert.ok(morning.steps.find((s) => s.name === 'Exercises')!.detail.includes('90/90s'));
-  assert.equal(morning.definition, 'No phone until the morning routine is done.');
+  const applies = (date: string) =>
+    byName(store.getDay(db, date).cells, 'Morning routine')
+      .steps.filter((s) => s.applicable).map((s) => s.name);
 
-  // The bonus never holds the routine open.
-  const required = morning.steps.filter((s) => !s.optional);
-  for (const s of required) store.setStep(db, MON, s.id, true);
-  assert.equal(byName(store.getDay(db, MON).cells, 'Morning routine').status, 'kept');
+  assert.deepEqual(applies(MON), ['Run', 'Meditate — 15 minutes', 'Read']);
+  assert.deepEqual(applies('2026-08-28'), ['Run', 'Meditate — 15 minutes', 'Read'],
+    'Friday runs too');
+
+  // Saturday and Sunday: no run, and the sit is saved for the evening.
+  for (const weekend of [SAT, SUN]) {
+    assert.deepEqual(applies(weekend), ['Outside — sunlight and a stretch'], weekend);
+  }
+
+  // One tick closes the weekend morning.
+  const outside = byName(store.getDay(db, SAT).cells, 'Morning routine')
+    .steps.find((s) => s.name.startsWith('Outside'))!;
+  store.setStep(db, SAT, outside.id, true);
+  assert.equal(byName(store.getDay(db, SAT).cells, 'Morning routine').status, 'kept');
   db.close();
 });
 
-test('Sunday releases the Monday-to-Saturday standards and keeps the rest', () => {
+test('the evening runs every night, and nothing digital comes to bed', () => {
+  const { db } = tempDb();
+  const tonight = (date: string) =>
+    byName(store.getDay(db, date).cells, 'Evening routine')
+      .steps.filter((s) => s.applicable).map((s) => s.name);
+
+  for (const date of [MON, SAT, SUN]) {
+    assert.deepEqual(tonight(date), [
+      'Phone turned off',
+      'Plan & reflect on the day',
+      'Journal',
+      "Set out tomorrow's outfit",
+      'Meditate — 15 minutes',
+    ], date);
+  }
+  // The podcast and the bedtime book are gone: he reads without being asked,
+  // and going to sleep on a podcast was never comfortable.
+  assert.ok(!tonight(MON).some((n) => /podcast|Read before bed/.test(n)));
+  db.close();
+});
+
+test('Sunday releases what the schedule does not ask for', () => {
   const { db } = tempDb();
   const sun = store.getDay(db, SUN);
   assert.equal(byName(sun.cells, 'Wake by').status, 'released');
   assert.equal(byName(sun.cells, 'No TV').status, 'released');
+  assert.equal(byName(sun.cells, 'Intermittent fasting').status, 'released');
   assert.equal(byName(sun.cells, 'Weekly review').status, 'released');
+
   assert.equal(byName(sun.cells, 'No porn').status, 'unanswered', 'every day, no exceptions');
-  assert.equal(byName(sun.cells, 'No digital technology').status, 'unanswered');
+  assert.equal(byName(sun.cells, 'Supplements').status, 'unanswered');
   assert.equal(byName(sun.cells, 'Morning routine').status, 'unanswered', 'runs every day');
-  assert.equal(byName(sun.cells, 'Primary objective').status, 'unanswered');
   assert.equal(byName(sun.cells, 'Evening routine').status, 'unanswered', 'runs every day');
   db.close();
 });
 
-const tonight = (db: any, date: string) =>
-  byName(store.getDay(db, date).cells, 'Evening routine')
-    .steps.filter((s) => s.applicable).map((s) => s.name);
-
-test('the evening routine runs every night, planning included', () => {
-  const { db } = tempDb();
-  for (const date of [MON, SAT, SUN]) {
-    const cell = byName(store.getDay(db, date).cells, 'Evening routine');
-    assert.equal(cell.status, 'unanswered', `asked on ${date}`);
-  }
-  // Every night: reflect, journal, tomorrow's outfit, the sit.
-  for (const date of [MON, SAT, SUN]) {
-    for (const name of ['Plan & reflect on the day', 'Journal',
-                        "Set out tomorrow's outfit", 'Meditate — 30 minutes']) {
-      assert.ok(tonight(db, date).includes(name), `${name} on ${date}`);
-    }
-  }
-  db.close();
-});
-
-test('the late shifts swap the book for a podcast, phone away either way', () => {
-  const { db } = tempDb();
-  // Friday and Saturday: home at one in the morning. The podcast plays off the
-  // Alexa, so the phone still goes to the study and nothing digital comes up.
-  for (const late of ['2026-08-28', SAT]) {
-    const steps = tonight(db, late);
-    assert.ok(steps.includes('Phone stored away in study'), 'every night, late or not');
-    assert.ok(!steps.includes('Read before bed'));
-    assert.ok(steps.includes('Read or listen to a podcast'));
-  }
-  // Every other night the book stands.
-  for (const quiet of [MON, SUN]) {
-    const steps = tonight(db, quiet);
-    assert.ok(steps.includes('Phone stored away in study'));
-    assert.ok(steps.includes('Read before bed'));
-    assert.ok(!steps.includes('Read or listen to a podcast'));
-  }
-  db.close();
-});
 
 test('a Saturday checklist is complete without the released steps', () => {
   const { db } = tempDb();
@@ -337,44 +328,27 @@ test('the CSV export writes one honest row per standard per day', () => {
   db.close();
 });
 
-test('the objectives read straight after the morning routine', () => {
-  const { db } = tempDb();
-  const names = store.currentStandards(db).map((s) => s.name);
-  assert.deepEqual(names.slice(0, 5), [
-    'Wake by 09:00',
-    'Morning routine',
-    'Primary objective',
-    'Secondary objective',
-    'Tertiary objective',
-  ]);
-  // The order is dense, so the numbers down the Manage list run 1, 2, 3…
-  assert.deepEqual(
-    store.currentStandards(db).map((s) => s.displayOrder),
-    Array.from({ length: names.length }, (_, i) => i + 1),
-  );
-});
-
 test('a lineage can only ever have one version in force', () => {
   const { db } = tempDb();
-  const primary = byName(store.currentStandards(db), 'Primary objective');
+  const sit = byName(store.currentStandards(db), 'Morning routine');
 
   // The bug this guards: a second live row on the same lineage made one of
   // the pair disappear from the list instead of raising anything.
   assert.throws(
     () => db.prepare(
       `INSERT INTO standard (lineage_id, display_order, name, definition, kind,
-         weekdays, points, effective_from)
-       VALUES (?, 99, 'Impostor', '', 'binary', 'MTWTFSS', 10, '2000-01-01')`,
-    ).run(primary.lineageId),
+         weekdays, effective_from)
+       VALUES (?, 99, 'Impostor', '', 'binary', 'MTWTFSS', '2000-01-01')`,
+    ).run(sit.lineageId),
     /UNIQUE/,
   );
 
   // Versioning still works: an edit closes one version and opens the next.
-  store.updateStandard(db, primary.lineageId, { name: 'Primary objective — the one that counts' });
-  const versions = store.allVersions(db).filter((v) => v.lineageId === primary.lineageId);
+  store.updateStandard(db, sit.lineageId, { name: 'Morning routine — the first hour' });
+  const versions = store.allVersions(db).filter((v) => v.lineageId === sit.lineageId);
   assert.ok(versions.length >= 1);
   assert.equal(
-    store.currentStandards(db).filter((s) => s.lineageId === primary.lineageId).length, 1,
+    store.currentStandards(db).filter((s) => s.lineageId === sit.lineageId).length, 1,
   );
 });
 
@@ -384,13 +358,13 @@ test('retiring a standard takes nothing else with it', () => {
   const sugar = store.createStandard(db, { name: 'No refined sugar or takeaway at all' });
 
   // The bug this guards: retire closed every live version on the lineage, and
-  // a standard added by hand used to share its lineage with an objective — so
-  // retiring the standard silently retired the objective beside it.
+  // a standard added by hand used to share its lineage with a seeded one — so
+  // retiring the new standard silently retired the seeded one beside it.
   store.retireStandard(db, sugar.lineageId);
 
   const after = store.currentStandards(db);
   assert.equal(after.length, before.length, 'only the one standard goes');
-  for (const name of ['Primary objective', 'Secondary objective', 'Tertiary objective']) {
+  for (const name of before.map((s) => s.name)) {
     assert.ok(after.some((s) => s.name === name), `${name} survives`);
   }
   assert.ok(!after.some((s) => s.name === sugar.name), 'the retired one is gone');
@@ -475,36 +449,3 @@ test('a block takes the 1% with the rest of the sheet', () => {
   db.close();
 });
 
-test('the weekend morning is the meditation and nothing else', () => {
-  const { db } = tempDb();
-  const applies = (date: string) =>
-    byName(store.getDay(db, date).cells, 'Morning routine')
-      .steps.filter((s) => s.applicable).map((s) => s.name);
-
-  // Monday to Friday the routine is unchanged.
-  assert.deepEqual(applies(MON), [
-    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate',
-  ]);
-  assert.deepEqual(applies('2026-08-28'), [
-    'Read', 'Exercises', 'Full exercise session', 'TRE', 'Meditate',
-  ], 'Friday too');
-
-  // Saturday and Sunday it is one thing.
-  for (const weekend of [SAT, SUN]) {
-    assert.deepEqual(applies(weekend), ['Meditate'], weekend);
-  }
-
-  // The morning sit carries no number; the evening one still does.
-  assert.ok(byName(store.currentStandards(db), 'Evening routine')
-    .steps.some((s) => s.name === 'Meditate — 30 minutes'));
-
-  // And one tick closes it, so a light Saturday is still a kept Saturday.
-  const sit = byName(store.getDay(db, SAT).cells, 'Morning routine')
-    .steps.find((s) => s.name === 'Meditate')!;
-  store.setStep(db, SAT, sit.id, true);
-  assert.equal(byName(store.getDay(db, SAT).cells, 'Morning routine').status, 'kept');
-
-  // The standard itself still runs every day — only its steps thin out.
-  assert.equal(byName(store.currentStandards(db), 'Morning routine').weekdays, 'MTWTFSS');
-  db.close();
-});

@@ -55,13 +55,13 @@ require(path.resolve(__dirname, '..', 'dist', 'app', 'main.cjs'));
   checks.push(['serves the built frontend', res.ok && html.includes('<div id="root">')]);
 
   const standards = await (await fetch(`${loadedUrl}/api/standards`)).json();
-  checks.push(['migrations ran and seeded the standards', standards.length === 11]);
+  checks.push(['migrations ran and seeded the standards', standards.length === 9]);
   checks.push(['the wake-up leads', standards[0].name === 'Wake by 09:00']);
-  checks.push(['the objectives read after the morning routine',
-    standards.slice(1, 5).map((s) => s.name).join('|')
-      === 'Morning routine|Primary objective|Secondary objective|Tertiary objective']);
-  checks.push(['the full exercise session is the one optional step',
-    standards[1].steps.filter((s) => s.optional).map((s) => s.name).join() === 'Full exercise session']);
+  checks.push(['the morning is a run, a sit and a read',
+    standards[1].steps.slice(0, 3).map((s) => s.name).join('|')
+      === 'Run|Meditate — 15 minutes|Read']);
+  checks.push(['the weekend morning is the light',
+    standards[1].steps[3].weekdays === '-----SS']);
 
   const dbFile = path.join(userData, 'rule.db');
   checks.push(['database written to userData', fs.existsSync(dbFile)]);
@@ -71,14 +71,14 @@ require(path.resolve(__dirname, '..', 'dist', 'app', 'main.cjs'));
   const tracking = (await (await fetch(`${loadedUrl}/api/today`)).json()).trackingDate;
   const today = tracking > standards[0].effectiveFrom ? tracking : standards[0].effectiveFrom;
   // The objectives run every day, so this holds whichever day the record opens on.
-  const daily = standards.find((s) => s.name === 'Primary objective');
+  const daily = standards.find((s) => s.name === 'Supplements');
   await fetch(`${loadedUrl}/api/mark/${today}/${daily.id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status: 'kept', reason: '' }),
   });
   const day = await (await fetch(`${loadedUrl}/api/day/${today}`)).json();
-  const marked = day.cells.find((c) => c.name === 'Primary objective');
+  const marked = day.cells.find((c) => c.name === 'Supplements');
   checks.push(['a mark round-trips', marked.status === 'kept']);
   checks.push(['and starts a run of one', marked.streak.current === 1]);
 
@@ -88,8 +88,8 @@ require(path.resolve(__dirname, '..', 'dist', 'app', 'main.cjs'));
     body: JSON.stringify({ startDate: today, endDate: today, reason: 'Italy' }),
   });
   const blocked = await (await fetch(`${loadedUrl}/api/day/${today}`)).json();
-  const obj = blocked.cells.find((c) => c.name === 'Primary objective');
-  const pin = blocked.cells.find((c) => c.name === 'No porn or ejaculation');
+  const obj = blocked.cells.find((c) => c.name === 'Supplements');
+  const pin = blocked.cells.find((c) => c.name === 'No porn');
   checks.push(['a block puts the day away', obj.status === 'away' && obj.awayReason === 'Italy']);
   checks.push(['and ends the run it was on', obj.streak.current === 0 && obj.streak.best === 0]);
   checks.push(['a pinned standard ignores the block',
