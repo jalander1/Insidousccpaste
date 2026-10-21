@@ -19,6 +19,7 @@
     "smoke": "npm run build && node scripts/smoke-bundle.cjs",
     "typecheck": "tsc --noEmit",
     "dist": "npm run build && electron-builder --mac --arm64",
+    "install-app": "npm run dist && ditto \"release/mac-arm64/Green Grass.app\" \"/Applications/Green Grass.app\" && xattr -dr com.apple.quarantine \"/Applications/Green Grass.app\" && npm run doctor",
     "doctor": "tsx scripts/doctor.ts"
   },
   "dependencies": {

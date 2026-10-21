@@ -18,21 +18,29 @@ npm install        # nothing compiles — the database driver ships prebuilt
 npm start          # builds everything and opens the app
 ```
 
-To build the double-clickable app:
+To build **and install** the double-clickable app:
+
+```bash
+npm run install-app
+```
+
+One command on purpose. It builds, copies over `/Applications/Green Grass.app`,
+clears the quarantine flag, and finishes by printing the doctor so you can see
+the install actually landed.
+
+Use it rather than running the steps by hand. `npm run dist` only writes to
+`release/mac-arm64/` — it does not touch the app you launch from the dock — so
+building and forgetting the copy leaves you testing a months-old app against a
+current database, wondering why nothing you changed has appeared. That has
+happened more than once.
+
+The steps, if you ever need them separately:
 
 ```bash
 npm run dist
-```
-
-That writes the app to `release/mac-arm64/Green Grass.app` (and a `.dmg` beside
-it). Install it with:
-
-```bash
 ditto "release/mac-arm64/Green Grass.app" "/Applications/Green Grass.app"
 xattr -dr com.apple.quarantine "/Applications/Green Grass.app"
 ```
-
-Then open it from Applications, and it lives in your dock like anything else.
 
 **Use `ditto`, not a Finder drag, and never run `codesign` on it.** An Electron
 app's `Contents/Frameworks` is built from symlinks; a copy that flattens them
