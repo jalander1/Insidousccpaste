@@ -42,6 +42,9 @@ export const api = {
     post<Block[]>('/api/block', f),
   unblock: (id: number) => req<Block[]>(`/api/block/${id}`, { method: 'DELETE' }),
 
+  veto: (date: string, lineageId: number, on: boolean) =>
+    put<DayView>(`/api/veto/${date}/${lineageId}`, { on }),
+
   pin: (lineageId: number, pinned: boolean) =>
     post<StandardVersion[]>(`/api/standards/${lineageId}/pin`, { pinned }),
 

@@ -48,9 +48,11 @@ export function resolveCell(
   date: ISODate,
   blocked: boolean,
   mark: 'kept' | 'broken' | undefined,
+  vetoed = false,
 ): CellStatus {
   if (!standardApplies(standard, date)) return 'released';
   if (blocked && !standard.pinned) return 'away';
+  if (vetoed) return 'vetoed';
   return mark ?? 'unanswered';
 }
 

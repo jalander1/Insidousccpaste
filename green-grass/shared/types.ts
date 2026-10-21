@@ -12,7 +12,8 @@ export type Kind = 'binary' | 'abstain' | 'checklist';
  * do to a run: a release the schedule made is transparent, a block you chose
  * ends it.
  */
-export type CellStatus = 'kept' | 'broken' | 'released' | 'away' | 'unanswered';
+export type CellStatus =
+  | 'kept' | 'broken' | 'released' | 'away' | 'vetoed' | 'unanswered';
 
 export interface StandardVersion {
   id: number;
@@ -24,6 +25,8 @@ export interface StandardVersion {
   weekdays: string;
   /** Does not take holidays: a block leaves it asked, tickable and counting. */
   pinned: boolean;
+  /** Nights off you may spend on this standard each week. 0 for most. */
+  vetoesPerWeek: number;
   effectiveFrom: ISODate;
   effectiveTo: ISODate | null;
   steps: RoutineStep[];
@@ -59,6 +62,8 @@ export interface DayCell {
   reason: string;
   /** Set when a block put the day out of reach, rather than the schedule. */
   awayReason: string | null;
+  /** The weekly allowance, what is left of it, and whether today is spent. */
+  veto: { allowed: number; left: number; active: boolean };
   steps: DayStepView[];
 }
 

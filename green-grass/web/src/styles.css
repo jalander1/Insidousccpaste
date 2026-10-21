@@ -614,3 +614,21 @@ details.defs[open] summary::before { content: '– '; }
 /* The grip costs a row its slack, so the controls under a step wrap rather
    than run off the side of a narrow window. */
 .step-edit .row { flex-wrap: wrap; row-gap: 6px; }
+
+/* A night off, offered only where there is an allowance left to spend. */
+.veto {
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--dimmer);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  border-radius: 2px;
+  margin-top: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.veto:hover { border-color: var(--brass-lo); color: var(--bone); }
+.veto:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }

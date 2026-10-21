@@ -3,6 +3,7 @@ import type { CellStatus, StreakInfo } from './types.js';
 /**
  * Streaks over a chronological run of resolved cell states.
  *
+ * A night you vetoed is transparent too — that is what the allowance buys.
  * A release the *schedule* made is transparent: a Sunday never breaks a
  * Mon–Sat run, and a Saturday-only standard would never get past one if it
  * were not. A release *you* made — a block, a week away — is not transparent:
@@ -27,7 +28,7 @@ export function currentStreak(statuses: readonly CellStatus[]): number {
   let started = false;
   for (let i = statuses.length - 1; i >= 0; i--) {
     const s = statuses[i];
-    if (s === 'released') continue;
+    if (s === 'released' || s === 'vetoed') continue;
     if (s === 'away') break;
     if (s === 'unanswered') {
       if (!started) continue; // not yet recorded
@@ -45,7 +46,7 @@ export function bestStreak(statuses: readonly CellStatus[]): number {
   let best = 0;
   let run = 0;
   for (const s of statuses) {
-    if (s === 'released') continue;
+    if (s === 'released' || s === 'vetoed') continue;
     if (s === 'kept') {
       run++;
       if (run > best) best = run;

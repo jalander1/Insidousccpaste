@@ -91,6 +91,7 @@ days are never locked — honesty over ceremony.
 | **unanswered** | empty square, not yet filled in |
 | **released** | the schedule did not ask for it that day — left out of the counting, and transparent to a run |
 | **away** | you blocked the day out. Not asked, not tickable, and the run ends there |
+| **vetoed** | you spent a night off on it. Not asked, and the run steps over it |
 
 Sunday releases the Monday–Saturday standards — the wake-up, no TV and the
 fast — and Saturday is the only day the weekly review is asked. The two
@@ -130,6 +131,25 @@ and the record should say so.
 bottom of today — and it appears the next day as its own row, with its text, to
 be kept or broken. After that day it is history; you write a new one. It keeps
 its own run, like everything else.
+
+### One night off a week
+
+Friday and Saturday he is in from the bar at one in the morning, and the
+evening routine is still asked. **The evening routine carries one veto a
+week** — Monday to Sunday, use it or lose it. Spend it and the night is not
+asked of you, and **the run steps over it** rather than ending.
+
+That is the difference between a veto and a block. A block says *I was away,
+and the record should say I did not keep this*. A veto says *I worked until
+one and I am going to bed*, and it costs an allowance rather than a streak.
+It is the only kind of release you have to spend, which is what stops it
+becoming a way out of every hard night.
+
+A veto does not make the night kept — it makes it not count. So vetoing a
+night you had already ticked takes that night out of the run as well. Take
+the veto back and everything returns, the tick included.
+
+Any standard can carry an allowance; only the evening routine has one.
 
 ### Why it broke
 

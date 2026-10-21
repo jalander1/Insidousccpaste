@@ -101,6 +101,13 @@ export function createApp(db: DB, opts: ServerOptions) {
     return store.listBlocks(db);
   }));
 
+  app.put('/api/veto/:date/:lineageId', wrap((req) => {
+    const { date, lineageId } = req.params;
+    if (req.body?.on) store.setVeto(db, date, Number(lineageId));
+    else store.clearVeto(db, date, Number(lineageId));
+    return store.getDay(db, date);
+  }));
+
   app.post('/api/standards/:lineageId/pin', wrap((req) =>
     store.setPinned(db, Number(req.params.lineageId), !!req.body?.pinned)));
 

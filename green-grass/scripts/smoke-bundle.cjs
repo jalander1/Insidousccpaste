@@ -82,6 +82,18 @@ require(path.resolve(__dirname, '..', 'dist', 'app', 'main.cjs'));
   checks.push(['a mark round-trips', marked.status === 'kept']);
   checks.push(['and starts a run of one', marked.streak.current === 1]);
 
+  // One night off a week, on the evening routine and nowhere else.
+  const ev = standards.find((s) => s.name === 'Evening routine');
+  checks.push(['the evening routine carries one veto a week',
+    ev.vetoesPerWeek === 1 && standards.filter((s) => s.vetoesPerWeek > 0).length === 1]);
+  const vetoed = await (await fetch(`${loadedUrl}/api/veto/${today}/${ev.lineageId}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ on: true }),
+  })).json();
+  const night = vetoed.cells.find((c) => c.name === 'Evening routine');
+  checks.push(['and spending it puts the night out of play',
+    night.status === 'vetoed' && night.veto.left === 0]);
+
   // A block puts the sheet away and ends the run; a pinned standard ignores it.
   await fetch(`${loadedUrl}/api/block`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

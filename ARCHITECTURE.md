@@ -93,7 +93,16 @@ room-tech and whole-food rules stopped being tracked at all because they happen
 without asking. A run, the supplements and an intermittent fast came in. The
 pattern to notice across both resets: every revision has removed obligation,
 and the app's job is to follow the life rather than hold it to a list it has
-outgrown. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
+outgrown.
+
+**A veto is the third kind of "not asked"** (migration `017_veto`), and the
+only one you spend. `standard.vetoes_per_week` is an allowance, 0 for all but
+the evening routine; a row in `veto` spends one on a date. `released` is
+transparent to a run because the schedule never asked, `away` ends a run
+because you were gone, and `vetoed` is transparent because you paid for it.
+The allowance is counted Monday to Sunday via `mondayOf`, enforced in
+`setVeto` rather than in the button, and refused on a night a block already
+covers so it cannot be burned for nothing. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
 
 ### 4.2 Days have *types*, and the schedule resolves against the day type
 

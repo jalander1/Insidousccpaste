@@ -193,7 +193,8 @@ function Entry({
   const [reason, setReason] = useState(cell.reason);
   const [askReason, setAskReason] = useState(false);
   const away = cell.status === 'away';
-  const released = cell.status === 'released' || away;
+  const vetoed = cell.status === 'vetoed';
+  const released = cell.status === 'released' || away || vetoed;
   const unsaved = useRef(false);
 
   useEffect(() => { if (!unsaved.current) setReason(cell.reason); }, [cell.reason]);
@@ -217,22 +218,32 @@ function Entry({
   const toggleStep = async (stepId: number, checked: boolean) =>
     onChange(await track(api.step(date, stepId, checked)));
 
+  const veto = async (on: boolean) =>
+    onChange(await track(api.veto(date, cell.lineageId, on)));
+
   return (
-    <div className={`entry${released ? ' is-released' : ''}${away ? ' is-away' : ''}`}>
+    <div className={`entry${released ? ' is-released' : ''}${away || vetoed ? ' is-away' : ''}`}>
       <div className="entry-main">
         <div className="entry-body">
           <div className="entry-num">{String(index).padStart(2, '0')}</div>
           <div className="entry-name">{cell.name}</div>
           {released ? (
             <div className="entry-released-note">
-              {away
-                ? `Away${cell.awayReason ? ` — ${cell.awayReason}` : ''}`
+              {away ? `Away${cell.awayReason ? ` — ${cell.awayReason}` : ''}`
+                : vetoed ? 'Vetoed — this week\u2019s night off'
                 : 'Released today.'}
             </div>
           ) : (
             cell.definition && <div className="entry-def">{cell.definition}</div>
           )}
         </div>
+
+        {vetoed && (
+          <div className="choice-stack">
+            <button className="mini" onClick={() => veto(false)}>take it back</button>
+            <Streak streak={cell.streak} />
+          </div>
+        )}
 
         {!released && (
           <div className="choice-stack">
@@ -243,6 +254,13 @@ function Entry({
                 onClick={() => set('broken')} aria-pressed={cell.status === 'broken'}>broken</button>
             </div>
             <Streak streak={cell.streak} />
+            {cell.veto.left > 0 && (
+              <button
+                className="veto"
+                onClick={() => veto(true)}
+                title="A night off. It does not break the run — you have one a week."
+              >veto tonight · {cell.veto.left} left</button>
+            )}
           </div>
         )}
       </div>

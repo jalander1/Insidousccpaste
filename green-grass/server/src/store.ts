@@ -1,6 +1,6 @@
 import type { DB } from './db.js';
 import {
-  addDays, rangeDates, toISO, trackingDate, weekdayIndex, type ISODate,
+  addDays, mondayOf, rangeDates, toISO, trackingDate, weekdayIndex, type ISODate,
 } from '../../shared/dates.js';
 import { checklistComplete, resolveCell, stepApplies } from '../../shared/resolve.js';
 import { computeStreaks } from '../../shared/streaks.js';
@@ -16,6 +16,7 @@ const now = () => new Date().toISOString();
 interface StandardRow {
   id: number; lineage_id: number; display_order: number; name: string;
   definition: string; kind: Kind; weekdays: string; pinned: number;
+  vetoes_per_week: number;
   effective_from: string; effective_to: string | null;
 }
 
@@ -37,6 +38,7 @@ function toStandard(r: StandardRow, steps: RoutineStep[]): StandardVersion {
     id: r.id, lineageId: r.lineage_id, displayOrder: r.display_order,
     name: r.name, definition: r.definition, kind: r.kind, weekdays: r.weekdays,
     pinned: !!r.pinned,
+    vetoesPerWeek: r.vetoes_per_week,
     effectiveFrom: r.effective_from, effectiveTo: r.effective_to,
     steps: steps.filter((s) => s.standardId === r.id)
       .sort((a, b) => a.stepOrder - b.stepOrder),
@@ -97,6 +99,20 @@ function blocksOn(db: DB, date: ISODate): Map<number | null, string> {
   return new Map(rows.map((r) => [r.lineage_id, r.reason]));
 }
 
+/** The lineages with a night off spent on this date. */
+function vetoesOn(db: DB, date: ISODate): Set<number> {
+  return new Set((db.prepare('SELECT lineage_id FROM veto WHERE date = ?')
+    .all(date) as { lineage_id: number }[]).map((r) => r.lineage_id));
+}
+
+/** How many nights off have been spent on this standard in `date`'s week. */
+function vetoesUsedInWeek(db: DB, date: ISODate, lineageId: number): number {
+  const from = mondayOf(date);
+  return (db.prepare(
+    'SELECT COUNT(*) n FROM veto WHERE lineage_id = ? AND date BETWEEN ? AND ?',
+  ).get(lineageId, from, addDays(from, 6)) as { n: number }).n;
+}
+
 /** The reason this standard is out of reach on this date, or null. */
 function blockReason(blocks: Map<number | null, string>, lineageId: number): string | null {
   if (blocks.has(lineageId)) return blocks.get(lineageId) || '';
@@ -154,6 +170,10 @@ export function streaksUpTo(db: DB, date: ISODate): Map<number, StreakInfo> {
     (db.prepare('SELECT date, standard_id, status FROM mark WHERE date BETWEEN ? AND ?')
       .all(from, date) as any[]).map((m) => [`${m.date}|${m.standard_id}`, m.status]),
   );
+  const vetoed = new Set<string>(
+    (db.prepare('SELECT date, lineage_id FROM veto WHERE date BETWEEN ? AND ?')
+      .all(from, date) as any[]).map((r) => `${r.date}|${r.lineage_id}`),
+  );
 
   const byLineage = new Map<number, StandardVersion[]>();
   for (const v of allVersions(db)) {
@@ -168,7 +188,8 @@ export function streaksUpTo(db: DB, date: ISODate): Map<number, StreakInfo> {
         (x) => x.effectiveFrom <= d && (x.effectiveTo === null || d <= x.effectiveTo),
       );
       if (!v) continue;  // the standard did not exist yet, or no longer does
-      statuses.push(resolveCell(v, d, isBlocked(d, lineageId), marks.get(`${d}|${v.id}`)));
+      statuses.push(resolveCell(v, d, isBlocked(d, lineageId), marks.get(`${d}|${v.id}`),
+        vetoed.has(`${d}|${lineageId}`)));
     }
     out.set(lineageId, computeStreaks(statuses));
   }
@@ -213,6 +234,7 @@ function onePercentStreak(db: DB, date: ISODate): StreakInfo {
 export function getDay(db: DB, date: ISODate): DayView {
   const standards = standardsAt(db, date);
   const blocks = blocksOn(db, date);
+  const vetoed = vetoesOn(db, date);
   const streaks = streaksUpTo(db, date);
 
   const marks = new Map<number, { status: 'kept' | 'broken'; reason: string }>(
@@ -235,10 +257,15 @@ export function getDay(db: DB, date: ISODate): DayView {
       definition: s.definition,
       kind: s.kind,
       displayOrder: s.displayOrder,
-      status: resolveCell(s, date, blocked !== null, mark?.status),
+      status: resolveCell(s, date, blocked !== null, mark?.status, vetoed.has(s.lineageId)),
       streak: streaks.get(s.lineageId) ?? { current: 0, best: 0 },
       reason: mark?.reason ?? '',
       awayReason: blocked !== null && !s.pinned ? blocked : null,
+      veto: {
+        allowed: s.vetoesPerWeek,
+        left: Math.max(0, s.vetoesPerWeek - vetoesUsedInWeek(db, date, s.lineageId)),
+        active: vetoed.has(s.lineageId),
+      },
       steps: s.steps.map((st) => ({
         ...st,
         applicable: stepApplies(st, date),
@@ -469,6 +496,28 @@ export function listBlocks(db: DB): Block[] {
   ).all() as Block[];
 }
 
+/**
+ * Spend a night off. Refuses when the week's allowance is gone, so the rule
+ * lives here rather than in a button that can be clicked twice.
+ */
+export function setVeto(db: DB, date: ISODate, lineageId: number): boolean {
+  const standard = currentStandards(db).find((s) => s.lineageId === lineageId);
+  if (!standard || standard.vetoesPerWeek <= 0) return false;
+  if (vetoesOn(db, date).has(lineageId)) return true;              // already spent today
+  // A blocked night is already out of reach; spending an allowance on it
+  // would burn the week's one for nothing.
+  if (blockReason(blocksOn(db, date), lineageId) !== null && !standard.pinned) return false;
+  if (vetoesUsedInWeek(db, date, lineageId) >= standard.vetoesPerWeek) return false;
+  db.prepare('INSERT INTO veto (date, lineage_id, created_at) VALUES (?, ?, ?)')
+    .run(date, lineageId, now());
+  return true;
+}
+
+/** Take it back — the allowance returns to the week it came from. */
+export function clearVeto(db: DB, date: ISODate, lineageId: number): void {
+  db.prepare('DELETE FROM veto WHERE date = ? AND lineage_id = ?').run(date, lineageId);
+}
+
 /** Pinned standards do not take holidays. */
 export function setPinned(db: DB, lineageId: number, pinned: boolean): StandardVersion[] {
   db.prepare('UPDATE standard SET pinned = ? WHERE lineage_id = ?')
@@ -510,7 +559,8 @@ export function exportCsv(db: DB): string {
     for (const s of standardsAt(db, date)) {
       const mark = marks.get(`${date}|${s.id}`);
       const status = resolveCell(
-        s, date, blockReason(blocks, s.lineageId) !== null, mark?.status as any);
+        s, date, blockReason(blocks, s.lineageId) !== null, mark?.status as any,
+        vetoesOn(db, date).has(s.lineageId));
       lines.push([
         date,
         ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][weekdayIndex(date)],

@@ -449,3 +449,68 @@ test('a block takes the 1% with the rest of the sheet', () => {
   db.close();
 });
 
+
+test('a veto is a night off that the run does not notice', () => {
+  const { db } = tempDb();
+  const evening = () => byName(store.getDay(db, MON).cells, 'Evening routine');
+  assert.equal(evening().veto.allowed, 1, 'one a week, on the evening routine only');
+  assert.equal(byName(store.getDay(db, MON).cells, 'Morning routine').veto.allowed, 0);
+
+  // Four nights kept, then a Friday worked until one in the morning.
+  const id = evening().standardId;
+  for (const d of ['2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27']) {
+    store.setMark(db, d, id, 'kept', '');
+  }
+  assert.equal(byName(store.getDay(db, '2026-08-27').cells, 'Evening routine').streak.current, 4);
+
+  assert.equal(store.setVeto(db, '2026-08-28', evening().lineageId), true);
+  const off = byName(store.getDay(db, '2026-08-28').cells, 'Evening routine');
+  assert.equal(off.status, 'vetoed');
+  assert.equal(off.veto.left, 0, 'that is the week gone');
+
+  // The night does not count, and the run steps over it.
+  store.setMark(db, '2026-08-29', byName(store.getDay(db, '2026-08-29').cells, 'Evening routine').standardId,
+    'kept', '');
+  assert.equal(byName(store.getDay(db, '2026-08-29').cells, 'Evening routine').streak.current, 5,
+    'four before, one after, and the veto is transparent');
+  db.close();
+});
+
+test('the allowance is one a week and it comes back on Monday', () => {
+  const { db } = tempDb();
+  const lineage = byName(store.getDay(db, MON).cells, 'Evening routine').lineageId;
+
+  assert.equal(store.setVeto(db, '2026-08-28', lineage), true, 'Friday of that week');
+  assert.equal(store.setVeto(db, '2026-08-29', lineage), false, 'Saturday of the same week');
+  assert.equal(byName(store.getDay(db, '2026-08-29').cells, 'Evening routine').status, 'unanswered');
+
+  // The next week is its own allowance.
+  assert.equal(store.setVeto(db, '2026-09-04', lineage), true);
+  assert.equal(byName(store.getDay(db, '2026-09-04').cells, 'Evening routine').veto.left, 0);
+
+  // Taking it back returns it to the week it came from.
+  store.clearVeto(db, '2026-08-28', lineage);
+  assert.equal(byName(store.getDay(db, '2026-08-28').cells, 'Evening routine').veto.left, 1);
+  assert.equal(store.setVeto(db, '2026-08-29', lineage), true, 'and can be spent elsewhere');
+  db.close();
+});
+
+test('a veto cannot be spent on a standard with no allowance', () => {
+  const { db } = tempDb();
+  const morning = byName(store.getDay(db, MON).cells, 'Morning routine');
+  assert.equal(store.setVeto(db, MON, morning.lineageId), false);
+  assert.equal(byName(store.getDay(db, MON).cells, 'Morning routine').status, 'unanswered');
+  db.close();
+});
+
+test('a veto is not wasted on a night that is already blocked', () => {
+  const { db } = tempDb();
+  const lineage = byName(store.getDay(db, MON).cells, 'Evening routine').lineageId;
+  store.setBlock(db, { startDate: MON, endDate: MON, reason: 'Italy' });
+
+  assert.equal(store.setVeto(db, MON, lineage), false, 'nothing to call off');
+  assert.equal(byName(store.getDay(db, MON).cells, 'Evening routine').status, 'away');
+  // And the week's allowance is still there to spend on a night that needs it.
+  assert.equal(store.setVeto(db, '2026-08-28', lineage), true);
+  db.close();
+});
