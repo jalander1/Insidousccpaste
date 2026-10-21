@@ -413,17 +413,61 @@ export function updateStandard(
   return currentStandards(db).find((s) => s.lineageId === lineageId) ?? null;
 }
 
+/**
+ * Reconcile a routine's steps against what the editor sent, rather than
+ * deleting the lot and writing them back.
+ *
+ * Two reasons. A tick is attached to a step row, so recreating the rows threw
+ * away every tick made that day — and because `step_check` has a foreign key
+ * onto `routine_step`, deleting a step that had been ticked did not merely
+ * lose the tick, it failed the whole edit with a constraint error. Editing a
+ * routine you had already started was impossible.
+ *
+ * Steps are matched by name, so reordering them keeps every tick with the
+ * step it belongs to. A renamed step is a new step and starts the day
+ * unticked, which is the honest reading of it.
+ */
 function replaceSteps(
   db: DB, standardId: number,
   steps: { name: string; detail: string; weekdays: string | null; optional?: boolean }[],
 ): void {
-  db.prepare('DELETE FROM routine_step WHERE standard_id = ?').run(standardId);
-  const ins = db.prepare(
+  const existing = db.prepare(
+    'SELECT id, name FROM routine_step WHERE standard_id = ? ORDER BY step_order',
+  ).all(standardId) as { id: number; name: string }[];
+
+  const spare = new Map<string, number[]>();
+  for (const e of existing) {
+    if (!spare.has(e.name)) spare.set(e.name, []);
+    spare.get(e.name)!.push(e.id);
+  }
+
+  const update = db.prepare(
+    `UPDATE routine_step SET step_order = ?, name = ?, detail = ?, weekdays = ?, optional = ?
+      WHERE id = ?`,
+  );
+  const insert = db.prepare(
     `INSERT INTO routine_step (standard_id, step_order, name, detail, weekdays, optional)
      VALUES (?,?,?,?,?,?)`,
   );
-  steps.forEach((s, i) =>
-    ins.run(standardId, i + 1, s.name, s.detail, s.weekdays, s.optional ? 1 : 0));
+
+  const kept = new Set<number>();
+  steps.forEach((s, i) => {
+    const reuse = spare.get(s.name)?.shift();
+    if (reuse !== undefined) {
+      update.run(i + 1, s.name, s.detail, s.weekdays, s.optional ? 1 : 0, reuse);
+      kept.add(reuse);
+    } else {
+      insert.run(standardId, i + 1, s.name, s.detail, s.weekdays, s.optional ? 1 : 0);
+    }
+  });
+
+  // Only what the edit actually removed goes, and its ticks go with it.
+  const gone = existing.filter((e) => !kept.has(e.id)).map((e) => e.id);
+  if (gone.length) {
+    const marks = gone.map(() => '?').join(',');
+    db.prepare(`DELETE FROM step_check WHERE step_id IN (${marks})`).run(...gone);
+    db.prepare(`DELETE FROM routine_step WHERE id IN (${marks})`).run(...gone);
+  }
 }
 
 export function createStandard(

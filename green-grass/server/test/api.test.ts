@@ -514,3 +514,72 @@ test('a veto is not wasted on a night that is already blocked', () => {
   assert.equal(store.setVeto(db, '2026-08-28', lineage), true);
   db.close();
 });
+
+test('a routine can be edited after its steps have been ticked', () => {
+  const { db } = tempDb();
+  const morning = () => byName(store.getDay(db, MON).cells, 'Morning routine');
+  const ticked = () => morning().steps.filter((s) => s.checked).map((s) => s.name);
+
+  store.setStep(db, MON, morning().steps[0].id, true);
+  store.setStep(db, MON, morning().steps[1].id, true);
+  assert.deepEqual(ticked(), ['Run', 'Meditate — 15 minutes']);
+
+  // The bug this guards: replaceSteps deleted every step row, and step_check
+  // has a foreign key onto them — so editing a routine you had already
+  // started failed outright with a constraint error.
+  const m = morning();
+  const saved = store.updateStandard(db, m.lineageId, {
+    definition: 'No phone until it is done.',
+    steps: m.steps.map((s) => ({
+      name: s.name, detail: s.detail, weekdays: s.weekdays, optional: s.optional,
+    })),
+  });
+  assert.equal(saved?.definition, 'No phone until it is done.');
+  assert.deepEqual(ticked(), ['Run', 'Meditate — 15 minutes'], 'and the ticks are still there');
+
+  // A step the edit removes goes cleanly. The version in force today loses
+  // it; the version that governed August keeps it, along with its ticks.
+  const r2 = morning();
+  store.updateStandard(db, r2.lineageId, {
+    steps: r2.steps.filter((s) => s.name !== 'Run').map((s) => ({
+      name: s.name, detail: s.detail, weekdays: s.weekdays, optional: s.optional,
+    })),
+  });
+  const live = byName(store.currentStandards(db), 'Morning routine');
+  assert.ok(!live.steps.some((s) => s.name === 'Run'), 'gone from today');
+  assert.deepEqual(ticked(), ['Run', 'Meditate — 15 minutes'], 'August is untouched');
+  assert.equal(
+    (db.prepare(
+      'SELECT COUNT(*) n FROM step_check WHERE step_id NOT IN (SELECT id FROM routine_step)',
+    ).get() as { n: number }).n, 0, 'no orphaned ticks left behind');
+  db.close();
+});
+
+test('reordering a routine keeps each tick with its own step', () => {
+  const { db } = tempDb();
+  // A standard begun today is edited in place rather than versioned, which is
+  // the path that reconciles steps instead of replacing them.
+  const made = store.createStandard(db, {
+    name: 'Gym session', kind: 'checklist',
+    steps: [
+      { name: 'Warm up', detail: '', weekdays: null },
+      { name: 'Bag work', detail: '', weekdays: null },
+      { name: 'Stretch', detail: '', weekdays: null },
+    ],
+  });
+  const today = trackingDate();
+  const gym = () => byName(store.getDay(db, today).cells, 'Gym session');
+  const ticked = () => gym().steps.filter((s) => s.checked).map((s) => s.name);
+
+  store.setStep(db, today, gym().steps.find((s) => s.name === 'Bag work')!.id, true);
+  assert.deepEqual(ticked(), ['Bag work']);
+
+  store.updateStandard(db, made.lineageId, {
+    steps: [...gym().steps].reverse().map((s) => ({
+      name: s.name, detail: s.detail, weekdays: s.weekdays, optional: s.optional,
+    })),
+  });
+  assert.deepEqual(gym().steps.map((s) => s.name), ['Stretch', 'Bag work', 'Warm up']);
+  assert.deepEqual(ticked(), ['Bag work'], 'the tick followed the step, not the slot');
+  db.close();
+});

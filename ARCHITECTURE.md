@@ -102,7 +102,16 @@ transparent to a run because the schedule never asked, `away` ends a run
 because you were gone, and `vetoed` is transparent because you paid for it.
 The allowance is counted Monday to Sunday via `mondayOf`, enforced in
 `setVeto` rather than in the button, and refused on a night a block already
-covers so it cannot be burned for nothing. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
+covers so it cannot be burned for nothing.
+
+**Editing a routine reconciles its steps rather than replacing them.**
+`replaceSteps` used to delete every step row and write them back, which threw
+away every tick made that day — and because `step_check` carries a foreign key
+onto `routine_step`, deleting a step that had been ticked failed the whole
+edit with a constraint error, so a routine could not be edited once the day
+had started. Steps are now matched by name: survivors keep their row and their
+ticks, new names are inserted, and only steps the edit actually removed are
+deleted, with their checks cleared first. Lists are keyed by the version row (`standard.id`), never by lineage, so even a database that somehow held duplicates renders a wrong list rather than a broken DOM: colliding React keys corrupted React's own bookkeeping and left Manage rows stranded on the Today screen.
 
 ### 4.2 Days have *types*, and the schedule resolves against the day type
 
